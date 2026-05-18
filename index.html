@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LINE Bot Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Prompt', sans-serif; background-color: #f3f4f6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        input:checked ~ .toggle-bg { background-color: #3b82f6; }
+        #form-rm-default:checked ~ .toggle-bg { background-color: #4f46e5; }
+        input:checked ~ .toggle-dot { transform: translateX(100%); }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white border-r shadow-sm flex flex-col z-20">
+        <div class="h-16 flex items-center px-6 border-b border-gray-100">
+            <i class="fa-brands fa-line text-green-500 text-3xl mr-3"></i>
+            <h1 class="text-xl font-bold text-gray-800">Bot Admin</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('keywords')" id="tab-btn-keywords" class="w-full flex items-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg font-medium transition-colors shadow-sm">
+                <i class="fa-solid fa-comment-dots w-6 text-center"></i> จัดการ Keyword
+            </button>
+            <button onclick="switchTab('richmenus')" id="tab-btn-richmenus" class="w-full flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
+                <i class="fa-solid fa-table-cells-large w-6 text-center"></i> จัดการ Rich Menu
+            </button>
+            <button onclick="switchTab('users')" id="tab-btn-users" class="w-full flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors">
+                <i class="fa-solid fa-users w-6 text-center"></i> จัดการผู้ใช้
+            </button>
+        </nav>
+        <div class="p-4 border-t text-sm text-gray-500 flex items-center justify-between bg-gray-50">
+            <span>สถานะระบบ:</span>
+            <span id="system-status" class="flex items-center text-green-600 font-medium">
+                <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Online
+            </span>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden bg-gray-50/50">
+        <!-- Header -->
+        <header class="h-16 bg-white border-b shadow-sm flex items-center px-8 justify-between z-10">
+            <h2 id="page-title" class="text-xl font-semibold text-gray-800">จัดการ Keyword ตอบกลับ</h2>
+            <div class="flex items-center space-x-4">
+                <button onclick="fetchDataFromGAS()" class="text-gray-500 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-gray-100" title="รีเฟรชข้อมูล">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-auto p-8 relative">
+            
+            <!-- Tab: Keywords -->
+            <div id="tab-keywords" class="tab-content active max-w-5xl mx-auto animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="relative w-72">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-keyword" onkeyup="renderKeywords()" placeholder="ค้นหา Keyword..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
+                    </div>
+                    <button onclick="openKeywordModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-sm shadow-blue-200 transition-all flex items-center transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-plus mr-2"></i> เพิ่ม Keyword
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="px-6 py-4 font-semibold">Keyword</th>
+                                <th class="px-6 py-4 font-semibold">Match Type</th>
+                                <th class="px-6 py-4 font-semibold">ประเภทข้อความ</th>
+                                <th class="px-6 py-4 font-semibold text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="keywords-table-body" class="divide-y divide-gray-50 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Rich Menus -->
+            <div id="tab-richmenus" class="tab-content max-w-5xl mx-auto animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="relative w-72">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-richmenu" onkeyup="renderRichMenus()" placeholder="ค้นหาชื่อ Rich Menu..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all">
+                    </div>
+                    <button onclick="openRichMenuModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-medium shadow-sm shadow-indigo-200 transition-all flex items-center transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-plus mr-2"></i> สร้าง Rich Menu
+                    </button>
+                </div>
+                
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="px-6 py-4 font-semibold w-24">ภาพปก</th>
+                                <th class="px-6 py-4 font-semibold">ชื่อ (ID)</th>
+                                <th class="px-6 py-4 font-semibold">สถานะ</th>
+                                <th class="px-6 py-4 font-semibold">วันที่สร้าง</th>
+                                <th class="px-6 py-4 font-semibold text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="richmenus-table-body" class="divide-y divide-gray-50 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Users -->
+            <div id="tab-users" class="tab-content max-w-5xl mx-auto animate-fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <div class="relative w-72">
+                        <i class="fa-solid fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                        <input type="text" id="search-user" onkeyup="renderUsers()" placeholder="ค้นหาชื่อผู้ใช้ หรือ ID..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all">
+                    </div>
+                </div>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50/80 text-gray-500 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="px-6 py-4 font-semibold">โปรไฟล์</th>
+                                <th class="px-6 py-4 font-semibold">สถานะข้อความ</th>
+                                <th class="px-6 py-4 font-semibold">วันที่เพิ่มเพื่อน</th>
+                                <th class="px-6 py-4 font-semibold text-right">จัดการ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="divide-y divide-gray-50 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: จัดการ Keyword -->
+    <div id="keyword-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 transition-opacity opacity-0 duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="keyword-modal-content">
+            <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800">เพิ่ม Keyword ใหม่</h3>
+                <button onclick="closeKeywordModal()" class="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                    <i class="fa-solid fa-times text-xl w-5 h-5 flex items-center justify-center"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto flex-1 bg-gray-50/50">
+                <input type="hidden" id="original-keyword">
+                
+                <div class="grid grid-cols-2 gap-5 mb-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">คำค้นหา (Keyword)</label>
+                        <input type="text" id="form-keyword" placeholder="เช่น โปรโมชั่น, สวัสดี" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">รูปแบบการเช็ค (Match Type)</label>
+                        <select id="form-matchtype" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white">
+                            <option value="exact">พิมพ์เป๊ะๆ (Exact)</option>
+                            <option value="contains">มีคำนี้ผสมอยู่ (Contains)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-5 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ประเภทการตอบกลับ (Message Type)</label>
+                    <select id="form-msgtype" onchange="toggleFormInputs()" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-blue-50/50 text-blue-700 font-medium transition-all">
+                        <option value="text">💬 ข้อความธรรมดา (Text)</option>
+                        <option value="image">🖼️ รูปภาพ (Image)</option>
+                        <option value="flex">📱 Flex Message (จาก Simulator)</option>
+                        <option value="imagemap">🗺️ Imagemap (ภาพแผนที่แบบกดได้)</option>
+                        <option value="raw">⚙️ JSON ขั้นสูง (Raw Payload)</option>
+                    </select>
+
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <label class="flex items-center cursor-pointer group">
+                            <div class="relative flex items-center">
+                                <input type="checkbox" id="form-show-loading" class="sr-only">
+                                <div class="w-10 h-6 bg-gray-200 rounded-full shadow-inner transition-colors group-hover:bg-gray-300 toggle-bg"></div>
+                                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-transform toggle-dot"></div>
+                            </div>
+                            <span class="ml-3 text-sm font-medium text-gray-700">แสดง Animation กำลังพิมพ์ (Loading) ⏳</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 1. Text -->
+                <div id="input-group-text" class="input-group">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">ข้อความที่ต้องการตอบกลับ</label>
+                    <textarea id="form-text-input" rows="4" placeholder="พิมพ์ข้อความที่ต้องการให้บอทตอบ..." class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none transition-all shadow-sm"></textarea>
+                </div>
+
+                <!-- 2. Image -->
+                <div id="input-group-image" class="input-group hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">URL รูปภาพจริง (Original Content URL)</label>
+                        <input type="url" id="form-img-original" placeholder="https://..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">URL รูปภาพตัวอย่าง (Preview Image URL)</label>
+                        <input type="url" id="form-img-preview" placeholder="https://..." class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all">
+                    </div>
+                </div>
+
+                <!-- 3. Flex Message -->
+                <div id="input-group-flex" class="input-group hidden space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">ข้อความแจ้งเตือน (Alt Text)</label>
+                        <input type="text" id="form-flex-alt" placeholder="เช่น คุณได้รับโปรโมชั่นใหม่!" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">JSON จาก Flex Message Simulator</label>
+                        <textarea id="form-flex-json" rows="6" placeholder='วางโค้ด JSON (เช่น { "type": "bubble", ... })' class="w-full px-4 py-3 rounded-xl border border-gray-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:border-blue-500 outline-none shadow-sm transition-all"></textarea>
+                    </div>
+                </div>
+
+                <!-- 4. Imagemap -->
+                <div id="input-group-imagemap" class="input-group hidden space-y-4">
+                    <div class="bg-blue-50 border border-blue-100 text-blue-700 p-3 rounded-xl text-sm flex items-start">
+                        <i class="fa-solid fa-circle-info mt-0.5 mr-3 text-lg"></i>
+                        <div>อัปโหลดรูปภาพที่นี่ ระบบจะนำไปแปลงเป็น Base URL พิเศษให้ใช้งานกับ Imagemap ได้ทันที (Google Drive ทริค)</div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">1. ภาพสำหรับ Imagemap (แนะนำความกว้าง 1040px)</label>
+                        <div class="flex items-center space-x-3">
+                            <input type="file" id="form-im-image" accept="image/jpeg, image/png" class="text-sm flex-1 p-1">
+                            <button type="button" onclick="uploadImagemapImage()" id="btn-upload-im" class="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm font-semibold transition-colors flex items-center whitespace-nowrap">
+                                <i class="fa-solid fa-cloud-arrow-up mr-2"></i> อัปโหลดรูปภาพ
+                            </button>
+                        </div>
+                        <input type="text" id="form-im-baseurl" placeholder="เมื่ออัปโหลดสำเร็จ Base URL จะขึ้นที่นี่..." class="w-full mt-3 px-4 py-2.5 rounded-xl border border-gray-200 bg-white text-gray-600 outline-none text-sm font-mono focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">2. ข้อความแจ้งเตือน (Alt Text)</label>
+                        <input type="text" id="form-im-alt" placeholder="เช่น เมนูหลักมาแล้ว!" class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none shadow-sm transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-1.5">3. JSON ส่วนของการคลิก Actions (จาก Bot Designer)</label>
+                        <textarea id="form-im-actions" rows="5" placeholder='วางเฉพาะส่วน Array ของ actions มาที่นี่ เช่น:&#10;[&#10;  { "type": "uri", "linkUri": "https://...", "area": { "x": 0, "y": 0, "width": 520, "height": 520 } }&#10;]' class="w-full px-4 py-3 rounded-xl border border-gray-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:border-blue-500 outline-none shadow-sm transition-all"></textarea>
+                    </div>
+                </div>
+
+                <!-- 5. Raw JSON -->
+                <div id="input-group-raw" class="input-group hidden">
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">JSON Payload (เต็มรูปแบบ)</label>
+                    <textarea id="form-raw-json" rows="6" placeholder='[ { "type": "text", "text": "สวัสดี" } ]' class="w-full px-4 py-3 rounded-xl border border-gray-200 font-mono text-sm focus:ring-2 focus:ring-blue-500 bg-gray-50 focus:border-blue-500 outline-none shadow-sm transition-all"></textarea>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-white">
+                <button onclick="closeKeywordModal()" class="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-medium hover:bg-gray-50 transition-colors">ยกเลิก</button>
+                <button onclick="saveKeyword()" id="btn-save-kw" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 flex items-center">
+                    <i class="fa-solid fa-save mr-2"></i> บันทึกข้อมูล
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: สร้าง Rich Menu (ใช้ Code เดิมของ Modal นี้) -->
+    <div id="richmenu-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm hidden flex items-center justify-center z-50 transition-opacity opacity-0 duration-300">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="richmenu-modal-content">
+            <div class="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-white">
+                <h3 class="text-lg font-bold text-gray-800">สร้าง Rich Menu ใหม่</h3>
+                <button onclick="closeRichMenuModal()" class="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                    <i class="fa-solid fa-times text-xl w-5 h-5 flex items-center justify-center"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 bg-gray-50/50 space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">JSON Object (จาก Bot Designer)</label>
+                    <textarea id="form-rm-json" rows="6" class="w-full px-4 py-3 rounded-xl border border-gray-200 font-mono text-sm focus:ring-2 focus:ring-indigo-500 bg-white focus:border-indigo-500 outline-none shadow-sm transition-all"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">รูปภาพภาพ Rich Menu (JPEG/PNG)</label>
+                    <div class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl bg-white hover:bg-gray-50 transition-colors relative cursor-pointer" onclick="document.getElementById('form-rm-image').click()">
+                        <div class="space-y-1 text-center">
+                            <i class="fa-regular fa-image text-4xl text-gray-400 mb-3" id="rm-img-icon"></i>
+                            <img id="rm-img-preview" class="mx-auto h-32 object-contain hidden mb-3 rounded-lg shadow-sm">
+                            <div class="flex justify-center text-sm text-gray-600">
+                                <span class="relative rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                                    <span>อัปโหลดไฟล์ภาพ</span>
+                                    <input id="form-rm-image" type="file" class="sr-only" accept="image/jpeg, image/png" onchange="previewRichMenuImage(event)">
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <label class="flex items-center cursor-pointer group">
+                        <div class="relative flex items-center">
+                            <input type="checkbox" id="form-rm-default" class="sr-only">
+                            <div class="w-10 h-6 bg-gray-200 rounded-full shadow-inner transition-colors group-hover:bg-gray-300 toggle-bg"></div>
+                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-transform toggle-dot"></div>
+                        </div>
+                        <span class="ml-3 text-sm font-medium text-gray-700">ตั้งค่าเป็น Rich Menu เริ่มต้นของบอททันที 🌟</span>
+                    </label>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-gray-100 flex justify-end space-x-3 bg-white">
+                <button onclick="closeRichMenuModal()" class="px-5 py-2.5 text-gray-600 bg-white border border-gray-300 rounded-xl font-medium hover:bg-gray-50">ยกเลิก</button>
+                <button onclick="submitRichMenu()" id="btn-save-rm" class="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 shadow-sm shadow-indigo-200 flex items-center">
+                    <i class="fa-solid fa-cloud-arrow-up mr-2" id="rm-save-icon"></i> <span id="rm-save-text">สร้าง และ อัปโหลด</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script ควบคุมการทำงาน -->
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2O75-XEHs_t-Eje-rpWvqU-CDXkcCpYsu2Tn8UJmwm9ha64xVTtbGhOrEEEjkfoTW/exec'; 
+        let appData = { keywords: [], users: [], richMenus: [] };
+        let isOnline = false;
+        let selectedRichMenuBase64 = null;
+
+        window.onload = () => { fetchDataFromGAS(); };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            const btnBaseClass = "w-full flex items-center px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium transition-colors";
+            document.getElementById('tab-btn-keywords').className = btnBaseClass;
+            document.getElementById('tab-btn-richmenus').className = btnBaseClass;
+            document.getElementById('tab-btn-users').className = btnBaseClass;
+            
+            let activeColorClass = "";
+            let titleText = "";
+            if(tabName === 'keywords') {
+                activeColorClass = "w-full flex items-center px-4 py-3 bg-blue-50 text-blue-700 rounded-lg font-medium transition-colors shadow-sm";
+                titleText = "จัดการ Keyword ตอบกลับ";
+            } else if (tabName === 'richmenus') {
+                activeColorClass = "w-full flex items-center px-4 py-3 bg-indigo-50 text-indigo-700 rounded-lg font-medium transition-colors shadow-sm";
+                titleText = "จัดการภาพปก Rich Menu";
+            } else {
+                activeColorClass = "w-full flex items-center px-4 py-3 bg-gray-100 text-gray-900 rounded-lg font-medium transition-colors shadow-sm";
+                titleText = "จัดการรายชื่อผู้ใช้ (Users)";
+            }
+            document.getElementById(`tab-btn-${tabName}`).className = activeColorClass;
+            document.getElementById('page-title').innerText = titleText;
+        }
+
+        async function fetchDataFromGAS() {
+            if (SCRIPT_URL.includes('ใส่_URL')) return;
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getData`);
+                const json = await res.json();
+                if (json.status === 'success') {
+                    appData = json.data;
+                    isOnline = true;
+                    document.getElementById('system-status').innerHTML = '<span class="w-2 h-2 rounded-full bg-green-500 mr-2 shadow-[0_0_5px_#22c55e]"></span> Online (API)';
+                    renderKeywords(); renderRichMenus(); renderUsers();
+                }
+            } catch (error) {}
+        }
+
+        function toggleFormInputs() {
+            const msgType = document.getElementById('form-msgtype').value;
+            document.querySelectorAll('.input-group').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`input-group-${msgType}`).classList.remove('hidden');
+        }
+
+        // ---------- ส่วนการอัปโหลด Imagemap (ใหม่) ----------
+        async function uploadImagemapImage() {
+            const fileInput = document.getElementById('form-im-image');
+            const file = fileInput.files[0];
+            if (!file) return alert('กรุณาเลือกไฟล์รูปภาพก่อนครับ');
+            
+            const btn = document.getElementById('btn-upload-im');
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-1.5"></i> กำลังอัปโหลด...';
+            btn.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const res = await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'uploadImagemapImage', imageBase64: e.target.result })
+                    });
+                    const result = await res.json();
+                    if (result.status === 'success') {
+                        document.getElementById('form-im-baseurl').value = result.baseUrl;
+                    } else {
+                        alert('Error: ' + result.message);
+                    }
+                } catch (err) { alert('เกิดข้อผิดพลาดในการเชื่อมต่อ'); } 
+                finally {
+                    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> อัปโหลดรูปภาพ';
+                    btn.disabled = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function buildPayloadFromForm() {
+            const msgType = document.getElementById('form-msgtype').value;
+            const showLoading = document.getElementById('form-show-loading').checked;
+            let payloadObj = [];
+
+            try {
+                if (msgType === 'text') {
+                    payloadObj = [{ type: "text", text: document.getElementById('form-text-input').value.trim() }];
+                } 
+                else if (msgType === 'image') {
+                    payloadObj = [{ type: "image", originalContentUrl: document.getElementById('form-img-original').value.trim(), previewImageUrl: document.getElementById('form-img-preview').value.trim() }];
+                }
+                else if (msgType === 'flex') {
+                    const altText = document.getElementById('form-flex-alt').value.trim() || "คุณได้รับข้อความใหม่";
+                    payloadObj = [{ type: "flex", altText: altText, contents: JSON.parse(document.getElementById('form-flex-json').value.trim()) }];
+                }
+                // ---------- ส่วนการประกอบร่าง Imagemap JSON (ใหม่) ----------
+                else if (msgType === 'imagemap') {
+                    const baseUrl = document.getElementById('form-im-baseurl').value.trim();
+                    const altText = document.getElementById('form-im-alt').value.trim() || "Imagemap";
+                    const actionsStr = document.getElementById('form-im-actions').value.trim();
+                    
+                    if (!baseUrl) throw new Error("กรุณาอัปโหลดรูปภาพเพื่อให้ระบบสร้าง Base URL ให้ก่อนครับ");
+                    if (!actionsStr) throw new Error("กรุณาวางโค้ด JSON ส่วนของ actions");
+                    
+                    payloadObj = [{
+                        type: "imagemap",
+                        baseUrl: baseUrl,
+                        altText: altText,
+                        baseSize: { width: 1040, height: 1040 }, // ขนาด Default (แก้ได้เองในโหมด RAW หากต้องการ)
+                        actions: JSON.parse(actionsStr)
+                    }];
+                }
+                else if (msgType === 'raw') {
+                    return JSON.stringify(JSON.parse(document.getElementById('form-raw-json').value.trim())); 
+                }
+
+                if (showLoading) return JSON.stringify({ showLoading: true, messages: payloadObj });
+                return JSON.stringify(payloadObj);
+
+            } catch (err) {
+                alert("เกิดข้อผิดพลาด:\n" + err.message);
+                return null;
+            }
+        }
+
+        function parsePayloadToForm(payloadStr) {
+            try {
+                const parsedObj = JSON.parse(payloadStr);
+                let messagesObj = parsedObj;
+                let showLoading = false;
+
+                if (!Array.isArray(parsedObj) && parsedObj.messages) {
+                    messagesObj = parsedObj.messages;
+                    showLoading = parsedObj.showLoading || false;
+                }
+
+                document.getElementById('form-show-loading').checked = showLoading;
+                const firstMsg = messagesObj[0]; 
+
+                if (firstMsg.type === 'text' && messagesObj.length === 1) {
+                    document.getElementById('form-msgtype').value = 'text';
+                    document.getElementById('form-text-input').value = firstMsg.text;
+                } 
+                else if (firstMsg.type === 'image' && messagesObj.length === 1) {
+                    document.getElementById('form-msgtype').value = 'image';
+                    document.getElementById('form-img-original').value = firstMsg.originalContentUrl;
+                    document.getElementById('form-img-preview').value = firstMsg.previewImageUrl;
+                }
+                else if (firstMsg.type === 'flex' && messagesObj.length === 1) {
+                    document.getElementById('form-msgtype').value = 'flex';
+                    document.getElementById('form-flex-alt').value = firstMsg.altText || '';
+                    document.getElementById('form-flex-json').value = JSON.stringify(firstMsg.contents, null, 2);
+                }
+                // ---------- ส่วนการแกะ Imagemap กลับใส่ฟอร์ม (ใหม่) ----------
+                else if (firstMsg.type === 'imagemap' && messagesObj.length === 1) {
+                    document.getElementById('form-msgtype').value = 'imagemap';
+                    document.getElementById('form-im-baseurl').value = firstMsg.baseUrl || '';
+                    document.getElementById('form-im-alt').value = firstMsg.altText || '';
+                    document.getElementById('form-im-actions').value = JSON.stringify(firstMsg.actions, null, 2);
+                }
+                else {
+                    document.getElementById('form-msgtype').value = 'raw';
+                    document.getElementById('form-raw-json').value = payloadStr;
+                }
+            } catch (e) {
+                document.getElementById('form-msgtype').value = 'raw';
+                document.getElementById('form-raw-json').value = payloadStr;
+            }
+            toggleFormInputs();
+        }
+
+        function openKeywordModal(editKeyword = null) {
+            document.getElementById('form-keyword').value = '';
+            document.getElementById('form-matchtype').value = 'exact';
+            document.getElementById('form-msgtype').value = 'text';
+            document.getElementById('form-show-loading').checked = false;
+            document.getElementById('form-text-input').value = '';
+            document.getElementById('form-img-original').value = '';
+            document.getElementById('form-img-preview').value = '';
+            document.getElementById('form-flex-alt').value = '';
+            document.getElementById('form-flex-json').value = '';
+            document.getElementById('form-im-baseurl').value = '';
+            document.getElementById('form-im-alt').value = '';
+            document.getElementById('form-im-actions').value = '';
+            document.getElementById('form-raw-json').value = '';
+            document.getElementById('original-keyword').value = '';
+            
+            toggleFormInputs();
+
+            const modal = document.getElementById('keyword-modal');
+            const content = document.getElementById('keyword-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+
+            if (editKeyword) {
+                document.getElementById('modal-title').innerText = "แก้ไข Keyword";
+                const kwObj = appData.keywords.find(k => k.keyword === editKeyword);
+                if (kwObj) {
+                    document.getElementById('original-keyword').value = kwObj.keyword;
+                    document.getElementById('form-keyword').value = kwObj.keyword;
+                    document.getElementById('form-matchtype').value = kwObj.matchType;
+                    parsePayloadToForm(kwObj.payload);
+                }
+            } else {
+                document.getElementById('modal-title').innerText = "เพิ่ม Keyword ใหม่";
+            }
+        }
+
+        function closeKeywordModal() {
+            const modal = document.getElementById('keyword-modal');
+            const content = document.getElementById('keyword-modal-content');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+
+        async function saveKeyword() {
+            const originalKw = document.getElementById('original-keyword').value;
+            const kw = document.getElementById('form-keyword').value.trim();
+            const mt = document.getElementById('form-matchtype').value;
+            if (!kw) return alert('กรุณากรอก Keyword');
+            
+            const finalPayload = buildPayloadFromForm();
+            if (!finalPayload) return; 
+
+            const newObj = { keyword: kw, matchType: mt, payload: finalPayload };
+            if (originalKw) {
+                const idx = appData.keywords.findIndex(k => k.keyword === originalKw);
+                if (idx !== -1) appData.keywords[idx] = newObj;
+            } else { appData.keywords.push(newObj); }
+            
+            renderKeywords(); closeKeywordModal();
+
+            if (isOnline) {
+                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'saveKeyword', originalKw: originalKw, keyword: kw, matchType: mt, payload: finalPayload }) });
+            }
+        }
+
+        async function deleteKeyword(kw) {
+            if (!confirm(`ยืนยันการลบ Keyword: ${kw} ?`)) return;
+            appData.keywords = appData.keywords.filter(k => k.keyword !== kw);
+            renderKeywords();
+            if (isOnline) await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteKeyword', id: kw }) });
+        }
+
+        function renderKeywords() {
+            const search = document.getElementById('search-keyword').value.toLowerCase();
+            const tbody = document.getElementById('keywords-table-body');
+            tbody.innerHTML = '';
+            const filtered = appData.keywords.filter(k => k.keyword.toLowerCase().includes(search));
+
+            if (filtered.length === 0) return tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">ไม่พบข้อมูล</td></tr>`;
+
+            filtered.forEach(k => {
+                let msgBadge = `<span class="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md font-medium border border-gray-200">Raw JSON</span>`;
+                let loadingBadge = '';
+                try {
+                    const p = JSON.parse(k.payload);
+                    const isWrapped = !Array.isArray(p) && p.messages;
+                    const msgs = isWrapped ? p.messages : p;
+                    if (isWrapped && p.showLoading) loadingBadge = `<span class="bg-indigo-50 text-indigo-600 text-xs px-2 py-1 rounded-md border border-indigo-100 ml-1.5 shadow-sm" title="เปิดใช้งาน Loading"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Loading</span>`;
+
+                    if(msgs[0]?.type === 'text') msgBadge = `<span class="bg-blue-50 text-blue-700 text-xs px-2.5 py-1 rounded-md font-medium border border-blue-100"><i class="fa-solid fa-font mr-1.5"></i> Text</span>`;
+                    else if(msgs[0]?.type === 'image') msgBadge = `<span class="bg-pink-50 text-pink-700 text-xs px-2.5 py-1 rounded-md font-medium border border-pink-100"><i class="fa-solid fa-image mr-1.5"></i> Image</span>`;
+                    else if(msgs[0]?.type === 'flex') msgBadge = `<span class="bg-purple-50 text-purple-700 text-xs px-2.5 py-1 rounded-md font-medium border border-purple-100"><i class="fa-solid fa-mobile-screen mr-1.5"></i> Flex</span>`;
+                    // ---------- ป้ายกำกับ Imagemap (ใหม่) ----------
+                    else if(msgs[0]?.type === 'imagemap') msgBadge = `<span class="bg-orange-50 text-orange-700 text-xs px-2.5 py-1 rounded-md font-medium border border-orange-100"><i class="fa-solid fa-map mr-1.5"></i> Imagemap</span>`;
+                    
+                    msgBadge += loadingBadge;
+                } catch(e) {}
+
+                const matchBadge = k.matchType === 'exact' ? `<span class="bg-green-100/70 text-green-700 text-xs px-3 py-1 rounded-full font-semibold border border-green-200">Exact</span>` : `<span class="bg-yellow-100/70 text-yellow-700 text-xs px-3 py-1 rounded-full font-semibold border border-yellow-200">Contains</span>`;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-blue-50/50 transition-colors group">
+                        <td class="px-6 py-4 text-gray-800 font-semibold text-[15px]">${k.keyword}</td>
+                        <td class="px-6 py-4">${matchBadge}</td>
+                        <td class="px-6 py-4 flex items-center">${msgBadge}</td>
+                        <td class="px-6 py-4 text-right">
+                            <div class="flex items-center justify-end space-x-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                <button onclick="openKeywordModal('${k.keyword}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-100 transition-colors"><i class="fa-solid fa-pen"></i></button>
+                                <button onclick="deleteKeyword('${k.keyword}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // ==========================================
+        // ส่วนจัดการ RICH MENUS & USERS (เหมือนเดิมเป๊ะ)
+        // ==========================================
+        function openRichMenuModal() {
+            document.getElementById('form-rm-json').value = '';
+            document.getElementById('form-rm-image').value = '';
+            document.getElementById('rm-img-preview').src = '';
+            document.getElementById('rm-img-preview').classList.add('hidden');
+            document.getElementById('rm-img-icon').classList.remove('hidden');
+            document.getElementById('form-rm-default').checked = false;
+            selectedRichMenuBase64 = null;
+            const modal = document.getElementById('richmenu-modal');
+            const content = document.getElementById('richmenu-modal-content');
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
+        }
+        function closeRichMenuModal() {
+            const modal = document.getElementById('richmenu-modal');
+            const content = document.getElementById('richmenu-modal-content');
+            modal.classList.add('opacity-0'); content.classList.remove('scale-100'); content.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); }, 300);
+        }
+        function previewRichMenuImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 1024 * 1024) return alert("ไฟล์ขนาดใหญ่เกินไป กรุณาอัปโหลดไฟล์ไม่เกิน 1MB");
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedRichMenuBase64 = e.target.result;
+                    document.getElementById('rm-img-preview').src = selectedRichMenuBase64;
+                    document.getElementById('rm-img-preview').classList.remove('hidden');
+                    document.getElementById('rm-img-icon').classList.add('hidden');
+                }; reader.readAsDataURL(file);
+            }
+        }
+        async function submitRichMenu() {
+            const jsonStr = document.getElementById('form-rm-json').value.trim();
+            const setAsDefault = document.getElementById('form-rm-default').checked;
+            if (!jsonStr || !selectedRichMenuBase64) return alert("กรุณาใส่ข้อมูลให้ครบ");
+            let parsedJson;
+            try { parsedJson = JSON.parse(jsonStr); if (!parsedJson.size || !parsedJson.areas) throw new Error(); } catch (e) { return alert("JSON ไม่ถูกต้อง"); }
+            if (!isOnline) return closeRichMenuModal();
+            const btn = document.getElementById('btn-save-rm');
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin mr-2"></i> สร้าง และ อัปโหลด'; btn.disabled = true;
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'createRichMenu', payload: parsedJson, imageBase64: selectedRichMenuBase64, setAsDefault: setAsDefault }) });
+                const result = await response.json();
+                if (result.status === 'success') { await fetchDataFromGAS(); closeRichMenuModal(); } else alert("Error: " + result.message);
+            } catch (error) { alert("เชื่อมต่อผิดพลาด"); } finally { btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i> สร้าง และ อัปโหลด'; btn.disabled = false; }
+        }
+        async function deleteRichMenu(id, name) {
+            if (!confirm(`ยืนยันการลบ Rich Menu: ${name || id} ?`)) return;
+            appData.richMenus = appData.richMenus.filter(r => r.richMenuId !== id); renderRichMenus();
+            if (isOnline) await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteRichMenu', id: id }) });
+        }
+        async function setDefaultRichMenu(id, name) {
+            if (!confirm(`ต้องการตั้งค่าให้ [${name || id}] เป็นค่าเริ่มต้นหรือไม่?`)) return;
+            appData.richMenus = appData.richMenus.map(r => ({ ...r, status: r.richMenuId === id ? 'Default' : 'Active' })); renderRichMenus();
+            if (isOnline) await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'setDefaultRichMenu', id: id }) });
+        }
+        function renderRichMenus() {
+            const search = document.getElementById('search-richmenu').value.toLowerCase();
+            const tbody = document.getElementById('richmenus-table-body');
+            tbody.innerHTML = '';
+            const filtered = (appData.richMenus || []).filter(r => (r.name || '').toLowerCase().includes(search) || r.richMenuId.toLowerCase().includes(search));
+            if (filtered.length === 0) return tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-10 text-center text-gray-400">ยังไม่มีข้อมูล Rich Menu</td></tr>`;
+            filtered.forEach(r => {
+                const date = new Date(r.date).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric' });
+                const isDefault = r.status === 'Default';
+                const statusBadge = isDefault ? `<span class="bg-indigo-100 text-indigo-700 text-xs px-2.5 py-1 rounded-md font-semibold border border-indigo-200">Default</span>` : `<span class="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md font-medium border border-gray-200">Active</span>`;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-indigo-50/40 transition-colors group">
+                        <td class="px-6 py-3"><div class="w-16 h-10 rounded bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center">${r.driveUrl ? `<img src="${r.driveUrl}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-image text-gray-300"></i>`}</div></td>
+                        <td class="px-6 py-3"><div class="font-semibold text-gray-800">${r.name || 'ไม่มีชื่อ'}</div><div class="text-[11px] text-gray-400 font-mono mt-0.5">${r.richMenuId.substring(0,12)}...</div></td>
+                        <td class="px-6 py-3">${statusBadge}</td><td class="px-6 py-3 text-gray-500">${date !== 'Invalid Date' ? date : '-'}</td>
+                        <td class="px-6 py-3 text-right"><div class="flex items-center justify-end space-x-2">${!isDefault ? `<button onclick="setDefaultRichMenu('${r.richMenuId}', '${r.name}')" class="text-xs px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50 font-medium">Set Default</button>` : ''}<button onclick="deleteRichMenu('${r.richMenuId}', '${r.name}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-100 opacity-60 group-hover:opacity-100"><i class="fa-solid fa-trash"></i></button></div></td>
+                    </tr>
+                `;
+            });
+        }
+        async function deleteUser(userId) {
+            if (!confirm(`ยืนยันการลบ ID: ${userId} ?`)) return;
+            appData.users = appData.users.filter(u => u.userId !== userId); renderUsers();
+            if (isOnline) await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'deleteUser', id: userId }) });
+        }
+        function renderUsers() {
+            const search = document.getElementById('search-user').value.toLowerCase();
+            const tbody = document.getElementById('users-table-body');
+            tbody.innerHTML = '';
+            const filtered = appData.users.filter(u => (u.name || '').toLowerCase().includes(search) || (u.userId || '').toLowerCase().includes(search));
+            if (filtered.length === 0) return tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-10 text-center text-gray-400">ไม่พบข้อมูลผู้ใช้</td></tr>`;
+            filtered.forEach(u => {
+                const pic = u.pic ? `<img src="${u.pic}" class="w-10 h-10 rounded-full object-cover border border-gray-100">` : `<div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-user"></i></div>`;
+                const date = new Date(u.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+                tbody.innerHTML += `<tr class="hover:bg-gray-50/80 transition-colors group"><td class="px-6 py-4 flex items-center space-x-4">${pic}<div><div class="font-semibold text-gray-800">${u.name || 'ไม่ระบุชื่อ'}</div><div class="text-[11px] text-gray-400 font-mono mt-0.5">${u.userId}</div></div></td><td class="px-6 py-4 text-sm text-gray-600 truncate max-w-xs">${u.status || '-'}</td><td class="px-6 py-4 text-sm text-gray-500">${date !== 'Invalid Date' ? date : '-'}</td><td class="px-6 py-4 text-right"><button onclick="deleteUser('${u.userId}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash"></i></button></td></tr>`;
+            });
+        }
+    </script>
+</body>
+</html>
