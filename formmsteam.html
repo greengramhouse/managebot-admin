@@ -232,7 +232,7 @@
         // ฟังก์ชันตรวจสอบการเป็นเพื่อน
         async function checkFriendship() {
             try {
-                const friend = await liff.friendship.get();
+                const friend = await liff.getFriendship();
                 console.log(friend)
                 const modal = document.getElementById('friendship-modal');
                 
