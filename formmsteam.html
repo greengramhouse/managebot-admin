@@ -233,6 +233,7 @@
         async function checkFriendship() {
             try {
                 const friend = await liff.friendship.get();
+                console.log(friend)
                 const modal = document.getElementById('friendship-modal');
                 
                 if (!friend.friendFlag) {
