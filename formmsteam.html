@@ -149,9 +149,14 @@
                     </div>
                     <h3 class="text-xl font-bold text-white mb-2">ส่งข้อมูลสำเร็จ!</h3>
                     <p class="text-emerald-200/80 mb-5">เราได้รับแจ้งปัญหาของคุณเรียบร้อยแล้ว แอดมินจะรีบดำเนินการตรวจสอบให้เร็วที่สุดครับ</p>
-                    <button onclick="resetForm()" class="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-bold transition-colors">
-                        แจ้งปัญหาเพิ่มเติม
-                    </button>
+                    <div class="flex justify-center space-x-3">
+                        <button onclick="resetForm()" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold transition-colors shadow-lg shadow-emerald-500/20 text-sm">
+                            แจ้งปัญหาเพิ่มเติม
+                        </button>
+                        <button onclick="closeSuccessModal()" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 rounded-xl font-bold transition-colors text-sm">
+                            ปิดหน้าต่าง
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -200,10 +205,7 @@
                 } else {
                     // หากไม่ได้ล็อคอิน ให้บังคับรีไดเรกต์ไปหน้า Login ทันที
                     console.log("LIFF is not logged in. Redirecting to login...");
-                    
-                    // แก้ไข: ใช้ URL แบบคลีนๆ (ไม่มี ? หรือ # ต่อท้าย) เพื่อป้องกัน Bad Request จาก LINE
-                    const cleanUrl = window.location.origin + window.location.pathname;
-                    liff.login({ redirectUri: cleanUrl });
+                    liff.login({ redirectUri: window.location.href });
                 }
             } catch (err) {
                 console.error("LIFF Init failed", err);
@@ -273,7 +275,7 @@
                 if(SCRIPT_URL.includes("ใส่_URL_ของ_APP_SCRIPT_ที่นี่")) {
                     await new Promise(r => setTimeout(r, 1500));
                     saveToLocalStorage(payload);
-                    showSuccess();
+                    await handleSuccessState(payload);
                 } else {
                     const response = await fetch(SCRIPT_URL, {
                         method: 'POST',
@@ -283,7 +285,7 @@
                     const result = await response.json();
                     if(result.status === 'success' || result.result === 'success') {
                         saveToLocalStorage(payload);
-                        showSuccess();
+                        await handleSuccessState(payload);
                     } else {
                         throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
                     }
@@ -371,6 +373,77 @@
                 successMsg.classList.add('scale-100', 'opacity-100');
                 successMsg.classList.remove('scale-95', 'opacity-0');
             }, 10);
+        }
+
+        async function handleSuccessState(payload) {
+            // เช็คว่าเปิดอยู่ในแอป LINE หรือไม่
+            if (liff.isInClient()) {
+                try {
+                    // ส่ง Flex Message กลับไปที่ห้องแชท
+                    await liff.sendMessages([createFlexMessage(payload)]);
+                    // ส่งเสร็จแล้วปิดหน้าต่าง LIFF ทันที
+                    liff.closeWindow();
+                } catch (err) {
+                    console.error("ส่ง Flex Message ไม่สำเร็จ: ", err);
+                    showSuccess(); // ถ้าส่งไม่ผ่านด้วยเหตุผลใดๆ ให้โชว์หน้า UI ปกติ
+                }
+            } else {
+                // ถ้าเปิดในเบราว์เซอร์ปกติ ให้โชว์หน้า UI
+                showSuccess();
+            }
+        }
+
+        function createFlexMessage(data) {
+            return {
+                type: "flex",
+                altText: "แจ้งปัญหาการใช้งาน MS Teams สำเร็จ",
+                contents: {
+                    type: "bubble",
+                    size: "kilo",
+                    header: {
+                        type: "box",
+                        layout: "vertical",
+                        backgroundColor: "#ec4899", // สีชมพูให้เข้ากับธีม
+                        contents: [
+                            { type: "text", text: "✅ รับแจ้งปัญหาสำเร็จ", weight: "bold", color: "#ffffff", size: "lg", align: "center" }
+                        ]
+                    },
+                    body: {
+                        type: "box",
+                        layout: "vertical",
+                        spacing: "md",
+                        contents: [
+                            { type: "text", text: "เราได้รับข้อมูลของคุณแล้ว แอดมินจะรีบตรวจสอบและดำเนินการให้เร็วที่สุดครับ", size: "sm", color: "#64748b", wrap: true },
+                            { type: "separator", margin: "md" },
+                            { type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: [
+                                { type: "box", layout: "baseline", spacing: "sm", contents: [
+                                    { type: "text", text: "รหัสนักเรียน", color: "#94a3b8", size: "sm", flex: 2 },
+                                    { type: "text", text: data.studentId, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                ]},
+                                { type: "box", layout: "baseline", spacing: "sm", contents: [
+                                    { type: "text", text: "ชื่อ-สกุล", color: "#94a3b8", size: "sm", flex: 2 },
+                                    { type: "text", text: data.fullName, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                ]},
+                                { type: "box", layout: "baseline", spacing: "sm", contents: [
+                                    { type: "text", text: "ปัญหาที่พบ", color: "#94a3b8", size: "sm", flex: 2 },
+                                    { type: "text", text: data.details, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                ]}
+                            ]}
+                        ]
+                    },
+                    footer: {
+                        type: "box", layout: "vertical",
+                        contents: [
+                            { type: "text", text: "เวลาแจ้ง: " + new Date(data.timestamp).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center" }
+                        ]
+                    }
+                }
+            };
+        }
+
+        function closeSuccessModal() {
+            // ซ่อนหน้าต่าง Success แล้วเคลียร์ฟอร์มให้กลับมาเหมือนเดิม
+            resetForm();
         }
 
         function resetForm() {
