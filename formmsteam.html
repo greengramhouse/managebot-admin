@@ -249,8 +249,8 @@
         }
 
         // ฟังก์ชันเมื่อกดปุ่ม "เพิ่มเพื่อนทันที"
-        function requestAddFriend() {
-            liff.requestFriendship();
+        async function requestAddFriend() {
+            await liff.requestFriendship();
         }
 
         // ตรวจสอบสถานะการเป็นเพื่อนอีกครั้งเวลาผู้ใช้ปิดหน้าต่างเพิ่มเพื่อนกลับมาหน้าฟอร์ม
