@@ -257,11 +257,11 @@
         }
 
         // ตรวจสอบสถานะการเป็นเพื่อนอีกครั้งเวลาผู้ใช้ปิดหน้าต่างเพิ่มเพื่อนกลับมาหน้าฟอร์ม
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && typeof liff !== 'undefined' && liff.isLoggedIn()) {
-                checkFriendship();
-            }
-        });
+        // document.addEventListener('visibilitychange', () => {
+        //     if (document.visibilityState === 'visible' && typeof liff !== 'undefined' && liff.isLoggedIn()) {
+        //         checkFriendship();
+        //     }
+        // });
 
         // ฟังก์ชันออกจากระบบ
         function liffLogout() {
