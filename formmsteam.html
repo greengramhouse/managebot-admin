@@ -238,9 +238,7 @@
                 
                 if (!friend.friendFlag) {
                     // ถ้ายังไม่ได้เป็นเพื่อน ให้โชว์ Modal บังคับเพิ่มเพื่อน
-                    // modal.classList.remove('hidden');
-                    await liff.requestFriendship();
-                    checkFriendship();
+                    modal.classList.remove('hidden');
                 } else {
                     // ถ้าเป็นเพื่อนแล้ว ให้ซ่อน Modal
                     modal.classList.add('hidden');
