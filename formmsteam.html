@@ -225,6 +225,14 @@
                 }
             } catch (err) {
                 console.error("LIFF Init failed", err);
+                // แจ้งเตือนผู้ใช้บนหน้าจอเพื่อการตรวจสอบปัญหา
+                const errorMsg = document.createElement('div');
+                errorMsg.style.color = 'red';
+                errorMsg.style.fontSize = '12px';
+                errorMsg.style.textAlign = 'center';
+                errorMsg.style.marginTop = '10px';
+                errorMsg.innerText = "LIFF Init Error: " + err.message + " (กรุณาใช้ HTTPS หรือ LIFF URL ในการทดสอบ)";
+                document.getElementById('user-profile-container').appendChild(errorMsg);
             }
         };
 
@@ -426,7 +434,7 @@
                     statusBg = "bg-emerald-400/10";
                     statusBorder = "border-emerald-400/20";
                     iconStr = "fa-check-circle";
-                } else if (statusStr.includes("กำลัง") || statusStr.includes("ระหว่าง")) {
+                } else if (statusStr.includes("อยู่ระหว่างดำเนินการ") || statusStr.includes("ระหว่าง")) {
                     statusColor = "text-blue-400";
                     statusBg = "bg-blue-400/10";
                     statusBorder = "border-blue-400/20";
