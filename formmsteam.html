@@ -31,6 +31,8 @@
             display: inline-block;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; opacity: 0; }
     </style>
 </head>
 <body class="text-slate-200 min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 selection:bg-pink-500/30 selection:text-pink-200">
@@ -67,9 +69,9 @@
                 </div>
 
                 <!-- History Button -->
-                <button onclick="toggleHistory()" class="flex items-center space-x-2 text-pink-400 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 sm:px-4 py-2 rounded-xl font-bold transition-all shadow-sm active:scale-95 text-xs sm:text-sm">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span class="hidden sm:inline">ประวัติการแจ้ง</span>
+                <button id="nav-history-btn" onclick="toggleHistory()" class="flex items-center space-x-2 text-pink-400 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 sm:px-4 py-2 rounded-xl font-bold transition-all shadow-sm active:scale-95 text-xs sm:text-sm">
+                    <i id="nav-history-icon" class="fa-solid fa-clock-rotate-left"></i>
+                    <span id="nav-history-text" class="hidden sm:inline">ประวัติการแจ้ง</span>
                 </button>
             </div>
 
@@ -175,22 +177,19 @@
             </div>
 
             <!-- History Section -->
-            <div id="history-section" class="hidden md:col-span-12 mt-4 transition-all duration-500 opacity-0 transform translate-y-4">
-                <div class="flex items-center justify-between mb-4 px-2">
-                    <h2 class="text-xl font-extrabold text-white flex items-center">
-                        <i class="fa-solid fa-clock-rotate-left text-pink-500 mr-2"></i> ประวัติการแจ้งปัญหาของคุณ
+            <div id="history-section" class="hidden md:col-span-12 lg:col-span-8 lg:col-start-3 transition-all duration-500 opacity-0 transform translate-y-4">
+                <div class="flex items-center justify-between mb-6 px-2">
+                    <h2 class="text-2xl font-extrabold text-white flex items-center">
+                        <i class="fa-solid fa-clock-rotate-left text-pink-500 mr-3"></i> ติดตามสถานะ
                     </h2>
                     <div class="flex items-center space-x-2">
-                        <button onclick="clearAllHistory()" class="text-sm text-slate-400 hover:text-red-400 bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-700 font-bold transition-colors" title="ลบประวัติทั้งหมด">
-                            <i class="fa-solid fa-trash-can mr-1"></i> ลบทั้งหมด
-                        </button>
-                        <button onclick="toggleHistory()" class="text-sm text-slate-400 hover:text-white bg-slate-800 px-3 py-1.5 rounded-lg shadow-sm border border-slate-700 font-bold transition-colors">
-                            <i class="fa-solid fa-times mr-1"></i> ปิด
+                        <button onclick="clearAllHistory()" class="text-sm text-slate-400 hover:text-red-400 bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-700 font-bold transition-colors" title="ลบประวัติทั้งหมด">
+                            <i class="fa-solid fa-trash-can md:mr-1"></i> <span class="hidden md:inline">ลบทั้งหมด</span>
                         </button>
                     </div>
                 </div>
 
-                <div id="history-list" class="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 pb-10">
+                <div id="history-list" class="max-h-[70vh] overflow-y-auto custom-scrollbar pr-2 pb-10">
                     <!-- History items via JS -->
                 </div>
             </div>
@@ -360,40 +359,67 @@
             
             if(history.length === 0) {
                 container.innerHTML = `
-                    <div class="glass-panel p-8 rounded-3xl border border-dashed border-slate-600 text-center text-slate-500 shadow-sm">
+                    <div class="glass-panel p-8 rounded-3xl border border-dashed border-slate-600 text-center text-slate-500 shadow-sm mt-4">
                         <i class="fa-solid fa-inbox text-4xl mb-3 opacity-30"></i>
                         <p class="font-bold">ยังไม่มีประวัติการแจ้งปัญหา</p>
                     </div>`;
                 return;
             }
 
-            container.innerHTML = '';
+            let html = '<div class="relative border-l-2 border-slate-700 ml-4 space-y-8 pb-4 mt-4">';
+            
             history.forEach((item, index) => {
                 const dateObj = new Date(item.timestamp);
                 const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute:'2-digit' });
+                // จำลองสถานะ - ในระบบจริงอาจจะดึงจาก API
+                const statusStr = "รอดำเนินการ"; 
+                const statusColor = "text-amber-400";
+                const statusBg = "bg-amber-400/10";
+                const statusBorder = "border-amber-400/20";
+                const iconStr = "fa-hourglass-half";
 
-                container.innerHTML += `
-                    <div class="glass-panel p-5 rounded-2xl border border-slate-700 shadow-sm hover:shadow-lg transition-shadow relative overflow-hidden group bg-slate-800/40 hover:bg-slate-800/60">
-                        <div class="absolute left-0 top-0 w-1.5 h-full bg-pink-500 group-hover:bg-rose-400 transition-colors"></div>
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center space-x-2">
-                                <span class="bg-slate-900 text-slate-300 text-[11px] px-2.5 py-1 rounded-md font-mono font-bold border border-slate-700"><i class="fa-solid fa-hashtag mr-1 text-slate-500"></i>${item.studentId}</span>
-                                <span class="font-bold text-white text-sm">${item.fullName}</span>
-                            </div>
-                            <div class="flex items-center space-x-2">
-                                <div class="text-[11px] text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded shadow-sm border border-slate-700 flex items-center">
-                                    <i class="fa-regular fa-calendar mr-1.5 text-pink-500/70"></i> ${dateStr} ${timeStr}
+                html += `
+                    <div class="relative pl-8 animate-fade-in-up" style="animation-delay: ${index * 100}ms;">
+                        <!-- Timeline Dot -->
+                        <div class="absolute -left-[11px] top-1.5 w-5 h-5 rounded-full bg-slate-900 border-4 border-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.4)] z-10"></div>
+                        
+                        <!-- Content Card -->
+                        <div class="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-700 shadow-lg hover:shadow-pink-500/10 hover:border-slate-600 transition-all relative overflow-hidden group bg-slate-800/40 hover:bg-slate-800/60">
+                            <div class="absolute left-0 top-0 w-1.5 h-full bg-gradient-to-b from-pink-500 to-rose-500 opacity-80 group-hover:opacity-100 transition-opacity"></div>
+                            
+                            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
+                                <div>
+                                    <div class="flex items-center space-x-2 mb-2">
+                                        <span class="bg-slate-900 text-slate-300 text-[11px] px-2.5 py-1 rounded-md font-mono font-bold border border-slate-700"><i class="fa-solid fa-hashtag mr-1 text-slate-500"></i>${item.studentId}</span>
+                                        <div class="flex items-center text-[11px] text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded shadow-sm border border-slate-700">
+                                            <i class="fa-regular fa-clock mr-1.5 text-pink-500/70"></i> ${dateStr} ${timeStr}
+                                        </div>
+                                    </div>
+                                    <h3 class="font-bold text-white text-base">${item.fullName}</h3>
                                 </div>
-                                <button onclick="deleteHistory(${index})" class="text-slate-500 hover:text-red-400 bg-slate-900 hover:bg-slate-800 w-7 h-7 rounded flex items-center justify-center border border-slate-700 transition-colors" title="ลบรายการนี้">
-                                    <i class="fa-solid fa-trash-can text-[10px]"></i>
-                                </button>
+                                
+                                <div class="flex items-center space-x-3 self-start">
+                                    <div class="flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold ${statusColor} ${statusBg} ${statusBorder} border shadow-sm">
+                                        <i class="fa-solid ${iconStr}"></i>
+                                        <span>${statusStr}</span>
+                                    </div>
+                                    <button onclick="deleteHistory(${index})" class="text-slate-500 hover:text-red-400 bg-slate-900 hover:bg-slate-800 w-8 h-8 rounded-xl flex items-center justify-center border border-slate-700 transition-all shadow-sm" title="ลบรายการนี้">
+                                        <i class="fa-solid fa-trash-can text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/50 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed shadow-inner">
+                                ${item.details}
                             </div>
                         </div>
-                        <div class="bg-slate-900/50 p-3.5 rounded-xl border border-slate-700/50 text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">${item.details}</div>
                     </div>
                 `;
             });
+            
+            html += '</div>';
+            container.innerHTML = html;
         }
 
         function deleteHistory(index) {
@@ -510,26 +536,35 @@
         function toggleHistory() {
             const historySec = document.getElementById('history-section');
             const formSec = document.getElementById('form-section');
+            const navBtn = document.getElementById('nav-history-btn');
+            const navIcon = document.getElementById('nav-history-icon');
+            const navText = document.getElementById('nav-history-text');
             
             if(historySec.classList.contains('hidden')) {
+                // Switch to History view
+                formSec.classList.add('hidden');
                 historySec.classList.remove('hidden');
-                formSec.classList.remove('lg:col-start-3', 'lg:col-span-8');
-                formSec.classList.add('lg:col-span-6');
-                historySec.classList.add('lg:col-span-6');
+                
+                navBtn.classList.replace('text-pink-400', 'text-slate-300');
+                navIcon.className = "fa-solid fa-arrow-left";
+                navText.innerText = "กลับหน้าฟอร์ม";
                 
                 setTimeout(() => {
                     historySec.classList.remove('opacity-0', 'translate-y-4');
                     historySec.classList.add('opacity-100', 'translate-y-0');
                 }, 10);
             } else {
+                // Switch back to Form view
                 historySec.classList.remove('opacity-100', 'translate-y-0');
                 historySec.classList.add('opacity-0', 'translate-y-4');
                 
+                navBtn.classList.replace('text-slate-300', 'text-pink-400');
+                navIcon.className = "fa-solid fa-clock-rotate-left";
+                navText.innerText = "ประวัติการแจ้ง";
+                
                 setTimeout(() => {
                     historySec.classList.add('hidden');
-                    formSec.classList.add('lg:col-start-3', 'lg:col-span-8');
-                    formSec.classList.remove('lg:col-span-6');
-                    historySec.classList.remove('lg:col-span-6');
+                    formSec.classList.remove('hidden');
                 }, 300);
             }
         }
