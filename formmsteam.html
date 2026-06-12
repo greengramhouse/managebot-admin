@@ -353,8 +353,44 @@
             loadHistory();
         }
 
-        function loadHistory() {
+        let isFetchingHistory = false;
+
+        async function loadHistory() {
+            // 1. โหลดจาก localStorage มาแสดงก่อนเพื่อให้รวดเร็ว
             const history = JSON.parse(localStorage.getItem('msteam_reports')) || [];
+            renderHistory(history);
+            
+            // 2. ดึงข้อมูลล่าสุดจาก API เพื่ออัปเดตสถานะ
+            if (!isFetchingHistory && !SCRIPT_URL.includes("ใส่_URL_ของ_APP_SCRIPT_ที่นี่")) {
+                isFetchingHistory = true;
+                try {
+                    const response = await fetch(SCRIPT_URL);
+                    const result = await response.json();
+                    
+                    if (result.status === 'success' && result.data) {
+                        let myHistory = [];
+                        if (lineUserId && lineUserId !== "ไม่มีข้อมูล LIFF") {
+                            // ดึงเฉพาะประวัติของ lineUserId ปัจจุบัน
+                            myHistory = result.data.filter(item => item.userId === lineUserId);
+                        } else {
+                            // ถ้ายังไม่มี lineUserId ให้ดึงประวัติจากรหัสนักเรียนที่มีในเครื่อง
+                            const myStudentIds = [...new Set(history.map(h => h.studentId))];
+                            myHistory = result.data.filter(item => myStudentIds.includes(item.studentId));
+                        }
+                        
+                        // บันทึกทับ localStorage
+                        localStorage.setItem('msteam_reports', JSON.stringify(myHistory));
+                        renderHistory(myHistory);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch latest history:", error);
+                } finally {
+                    isFetchingHistory = false;
+                }
+            }
+        }
+
+        function renderHistory(history) {
             const container = document.getElementById('history-list');
             
             if(history.length === 0) {
@@ -372,12 +408,35 @@
                 const dateObj = new Date(item.timestamp);
                 const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                 const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute:'2-digit' });
-                // จำลองสถานะ - ในระบบจริงอาจจะดึงจาก API
-                const statusStr = "รอดำเนินการ"; 
-                const statusColor = "text-amber-400";
-                const statusBg = "bg-amber-400/10";
-                const statusBorder = "border-amber-400/20";
-                const iconStr = "fa-hourglass-half";
+                
+                // อ่านสถานะจากข้อมูลจริง หรือตั้งค่าเริ่มต้น
+                const statusStr = item.status || "รับเรื่องแล้ว"; 
+                let statusColor = "text-purple-400";
+                let statusBg = "bg-purple-400/10";
+                let statusBorder = "border-purple-400/20";
+                let iconStr = "fa-info-circle";
+
+                if (statusStr.includes("รับเรื่อง") || statusStr.includes("รอดำเนินการ")) {
+                    statusColor = "text-amber-400";
+                    statusBg = "bg-amber-400/10";
+                    statusBorder = "border-amber-400/20";
+                    iconStr = "fa-hourglass-half";
+                } else if (statusStr.includes("เสร็จ") || statusStr.includes("เรียบร้อย")) {
+                    statusColor = "text-emerald-400";
+                    statusBg = "bg-emerald-400/10";
+                    statusBorder = "border-emerald-400/20";
+                    iconStr = "fa-check-circle";
+                } else if (statusStr.includes("กำลัง") || statusStr.includes("ระหว่าง")) {
+                    statusColor = "text-blue-400";
+                    statusBg = "bg-blue-400/10";
+                    statusBorder = "border-blue-400/20";
+                    iconStr = "fa-spinner fa-spin";
+                } else if (statusStr.includes("ปฏิเสธ") || statusStr.includes("ยกเลิก") || statusStr.includes("ไม่ได้")) {
+                    statusColor = "text-rose-400";
+                    statusBg = "bg-rose-400/10";
+                    statusBorder = "border-rose-400/20";
+                    iconStr = "fa-times-circle";
+                }
 
                 html += `
                     <div class="relative pl-8 animate-fade-in-up" style="animation-delay: ${index * 100}ms;">
