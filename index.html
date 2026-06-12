@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LINE Bot Admin Dashboard</title>
-    <meta name="description" content="แดชบอร์ดจัดการ LINE Bot - จัดการ Keyword, Rich Menu">
+    <meta name="description" content="แดชบอร์ดจัดการ LINE Bot - จัดการ Keyword, Rich Menu และผู้ใช้งานได้อย่างง่ายดาย">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1869,6 +1869,20 @@
 
             tbody.innerHTML = filtered.map(s => {
                 const date = new Date(s.timestamp).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                
+                let pushHtml = '';
+                if (s.status.includes('แจ้งผล')) {
+                    const safeFullName = (s.fullName || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    const safeDetails = (s.details || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                    const safeUserId = (s.userId || '').replace(/'/g, "\\'");
+                    
+                    pushHtml = `
+                    <div style="display:flex;align-items:center;gap:5px;margin-top:8px;">
+                        <input type="text" id="push-msg-${s.rowNumber}" placeholder="ข้อความแจ้งผล..." class="search-input" style="padding: 5px 10px; font-size: 11.5px; height: 28px; border-radius: 6px; width: 140px; border: 1px solid #c7d2fe;">
+                        <button onclick="pushFlexResult('${safeUserId}', '${safeFullName}', '${safeDetails}', '${date}', '${s.rowNumber}')" class="btn btn-sm btn-primary" style="height: 28px; padding: 0 10px; font-size: 11.5px; border-radius: 6px;" title="ส่งแจ้งเตือนให้ผู้ใช้"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>`;
+                }
+
                 return `
                 <tr>
                     <td>
@@ -1876,7 +1890,10 @@
                         <div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:2px;">${s.studentId}</div>
                     </td>
                     <td class="hide-mobile" style="max-width:250px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${s.details}">${s.details}</td>
-                    <td>${getServiceBadge(s.status)}</td>
+                    <td>
+                        ${getServiceBadge(s.status)}
+                        ${pushHtml}
+                    </td>
                     <td class="hide-mobile" style="color:#64748b;font-size:12.5px;">${date !== 'Invalid Date' ? date : '-'}</td>
                     <td>
                         <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px;">
@@ -1886,6 +1903,42 @@
                     </td>
                 </tr>`;
             }).join('');
+        }
+
+        async function pushFlexResult(userId, fullName, details, dateStr, rowNumber) {
+            const inputEl = document.getElementById(`push-msg-${rowNumber}`);
+            const adminMessage = inputEl ? inputEl.value.trim() : '';
+            if (!userId) return showToast('ไม่พบ User ID ของผู้ใช้นี้ (ผู้ใช้ไม่ได้ให้ความยินยอม หรือยังไม่เป็นเพื่อนกับบอท)', 'error');
+            if (!adminMessage) return showToast('กรุณากรอกข้อความแจ้งผล', 'warning');
+
+            const btn = inputEl.nextElementSibling;
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i>';
+            btn.disabled = true;
+
+            if (isOnline) {
+                const result = await safeFetchJson(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        action: 'pushFlexResult', 
+                        userId: userId,
+                        fullName: fullName,
+                        details: details,
+                        dateStr: dateStr,
+                        adminMessage: adminMessage 
+                    })
+                });
+
+                if (result.status === 'success') {
+                    showToast('ส่งข้อความแจ้งผลให้ผู้ใช้สำเร็จ!', 'success');
+                    inputEl.value = ''; // เคลียร์ข้อความหลังส่งเสร็จ
+                } else {
+                    showToast('Error: ' + result.message, 'error');
+                }
+            }
+
+            btn.innerHTML = originalIcon;
+            btn.disabled = false;
         }
 
         function openServiceModal(rowNumber, currentStatus) {
