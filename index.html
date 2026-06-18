@@ -1497,7 +1497,6 @@
                             <option value="รับเรื่องแล้ว">รับเรื่องแล้ว</option>
                             <option value="อยู่ระหว่างดำเนินการ">อยู่ระหว่างดำเนินการ</option>
                             <option value="ดำเนินการแล้วเสร็จ">ดำเนินการแล้วเสร็จ</option>
-                            <option value="แจ้งผล ผู้ใช้">แจ้งผล ผู้ใช้</option>
                         </select>
                     </div>
                 </div>
@@ -1845,7 +1844,6 @@
             if (status === 'รับเรื่องแล้ว') return `<span class="badge b-blue"><i class="fa-solid fa-inbox"></i> รับเรื่องแล้ว</span>`;
             if (status === 'อยู่ระหว่างดำเนินการ') return `<span class="badge b-org"><i class="fa-solid fa-spinner spin"></i> กำลังดำเนินการ</span>`;
             if (status === 'ดำเนินการแล้วเสร็จ') return `<span class="badge b-green"><i class="fa-solid fa-check"></i> แล้วเสร็จ</span>`;
-            if (status === 'แจ้งผล ผู้ใช้') return `<span class="badge b-pink"><i class="fa-solid fa-bullhorn"></i> แจ้งผล</span>`;
             return `<span class="badge b-gray">${status || '-'}</span>`;
         }
 
@@ -1871,7 +1869,7 @@
                 const date = new Date(s.timestamp).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 let pushHtml = '';
-                if (s.status.includes('แจ้งผล')) {
+                if (s.status.includes('ดำเนินการแล้วเสร็จ')) {
                     const safeFullName = (s.fullName || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     const safeDetails = (s.details || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     const safeUserId = (s.userId || '').replace(/'/g, "\\'");
