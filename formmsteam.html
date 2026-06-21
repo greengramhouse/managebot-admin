@@ -443,6 +443,7 @@
                     const result = await response.json();
                     if(result.status === 'success' || result.result === 'success') {
                         loadHistory();
+                        if (result.imageUrl) payload.imageUrl = result.imageUrl;
                         await handleSuccessState(payload);
                     } else {
                         throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
