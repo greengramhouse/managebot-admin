@@ -303,25 +303,27 @@
             // LIFF Initialization
             try {
                 // แทนที่ LIFF_ID ด้วย ID ของคุณ
-                await liff.init({ liffId: "2010257902-1VmmDA6n" });
+                liff.init({ liffId: "2010257902-1VmmDA6n" });
                 
-                if (liff.isLoggedIn()) {
-                    const profile = await liff.getProfile();
-                    lineUserId = profile.userId;
-                    
-                    // อัปเดต UI โปรไฟล์ใน Navbar
-                    displayUserProfile(profile);
+                liff.ready.then(async () => {
+                    if (liff.isLoggedIn()) {
+                        const profile = await liff.getProfile();
+                        lineUserId = profile.userId;
+                        
+                        // อัปเดต UI โปรไฟล์ใน Navbar
+                        displayUserProfile(profile);
 
-                    // ตรวจสอบการเป็นเพื่อน
-                    checkFriendship();
+                        // ตรวจสอบการเป็นเพื่อน
+                        checkFriendship();
 
-                    // โหลดประวัติการแจ้งซ่อมของ userId นี้
-                    loadHistory();
-                } else {
-                    // หากไม่ได้ล็อคอิน ให้บังคับรีไดเรกต์ไปหน้า Login ทันที
-                    console.log("LIFF is not logged in. Redirecting to login...");
-                    liff.login({ redirectUri: window.location.href });
-                }
+                        // โหลดประวัติการแจ้งซ่อมของ userId นี้
+                        loadHistory();
+                    } else {
+                        // หากไม่ได้ล็อคอิน ให้บังคับรีไดเรกต์ไปหน้า Login ทันที
+                        console.log("LIFF is not logged in. Redirecting to login...");
+                        liff.login({ redirectUri: window.location.href });
+                    }
+                });
             } catch (err) {
                 console.error("LIFF Init failed", err);
                 // แจ้งเตือนผู้ใช้บนหน้าจอเพื่อการตรวจสอบปัญหา
