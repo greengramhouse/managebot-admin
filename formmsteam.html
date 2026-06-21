@@ -747,9 +747,9 @@
                                 height: "sm",
                                 color: "#ec4899",
                                 action: {
-                                    type: "uri",
+                                    type: "text",
                                     label: "ตรวจสอบสถานะ",
-                                    uri: "https://line.me/R/msg/text/?" + encodeURIComponent("check-" + (data.requestId || ""))
+                                    text: "check-" + (data.requestId || "")
                                 }
                             },
                             { type: "text", text: "เวลาแจ้ง: " + new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center", margin: "md" }
