@@ -182,11 +182,7 @@
                     <h2 class="text-2xl font-extrabold text-white flex items-center">
                         <i class="fa-solid fa-clock-rotate-left text-pink-500 mr-3"></i> ติดตามสถานะ
                     </h2>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="clearAllHistory()" class="text-sm text-slate-400 hover:text-red-400 bg-slate-800 px-3 py-2 rounded-xl shadow-sm border border-slate-700 font-bold transition-colors" title="ลบประวัติทั้งหมด">
-                            <i class="fa-solid fa-trash-can md:mr-1"></i> <span class="hidden md:inline">ลบทั้งหมด</span>
-                        </button>
-                    </div>
+
                 </div>
 
                 <div id="history-list" class="max-h-[70vh] overflow-y-auto custom-scrollbar pr-2 pb-10">
@@ -202,8 +198,6 @@
         let lineUserId = "ไม่มีข้อมูล LIFF";
 
         window.onload = async () => {
-            loadHistory();
-            
             // LIFF Initialization
             try {
                 // แทนที่ LIFF_ID ด้วย ID ของคุณ
@@ -218,6 +212,9 @@
 
                     // ตรวจสอบการเป็นเพื่อน
                     checkFriendship();
+
+                    // โหลดประวัติการแจ้งซ่อมของ userId นี้
+                    loadHistory();
                 } else {
                     // หากไม่ได้ล็อคอิน ให้บังคับรีไดเรกต์ไปหน้า Login ทันที
                     console.log("LIFF is not logged in. Redirecting to login...");
@@ -330,7 +327,7 @@
             try {
                 if(SCRIPT_URL.includes("ใส่_URL_ของ_APP_SCRIPT_ที่นี่")) {
                     await new Promise(r => setTimeout(r, 1500));
-                    saveToLocalStorage(payload);
+                    loadHistory();
                     await handleSuccessState(payload);
                 } else {
                     const response = await fetch(SCRIPT_URL, {
@@ -340,7 +337,7 @@
                     
                     const result = await response.json();
                     if(result.status === 'success' || result.result === 'success') {
-                        saveToLocalStorage(payload);
+                        loadHistory();
                         await handleSuccessState(payload);
                     } else {
                         throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
@@ -355,23 +352,23 @@
             }
         }
 
-        function saveToLocalStorage(data) {
-            let history = JSON.parse(localStorage.getItem('msteam_reports')) || [];
-            history.unshift(data);
-            localStorage.setItem('msteam_reports', JSON.stringify(history));
-            loadHistory();
-        }
-
         let isFetchingHistory = false;
 
         async function loadHistory() {
-            // 1. โหลดจาก localStorage มาแสดงก่อนเพื่อให้รวดเร็ว
-            const history = JSON.parse(localStorage.getItem('msteam_reports')) || [];
-            renderHistory(history);
-            
-            // 2. ดึงข้อมูลล่าสุดจาก API เพื่ออัปเดตสถานะ
-            if (!isFetchingHistory && !SCRIPT_URL.includes("ใส่_URL_ของ_APP_SCRIPT_ที่นี่")) {
+            if (SCRIPT_URL.includes("ใส่_URL_ของ_APP_SCRIPT_ที่นี่")) {
+                renderHistory([]);
+                return;
+            }
+
+            if (!isFetchingHistory) {
                 isFetchingHistory = true;
+                const container = document.getElementById('history-list');
+                container.innerHTML = `
+                    <div class="glass-panel p-8 rounded-3xl border border-dashed border-slate-600 text-center text-slate-500 shadow-sm mt-4">
+                        <i class="fa-solid fa-circle-notch fa-spin text-4xl mb-3 text-pink-500"></i>
+                        <p class="font-bold text-white">กำลังโหลดประวัติ...</p>
+                    </div>`;
+
                 try {
                     const response = await fetch(SCRIPT_URL);
                     const result = await response.json();
@@ -381,18 +378,14 @@
                         if (lineUserId && lineUserId !== "ไม่มีข้อมูล LIFF") {
                             // ดึงเฉพาะประวัติของ lineUserId ปัจจุบัน
                             myHistory = result.data.filter(item => item.userId === lineUserId);
-                        } else {
-                            // ถ้ายังไม่มี lineUserId ให้ดึงประวัติจากรหัสนักเรียนที่มีในเครื่อง
-                            const myStudentIds = [...new Set(history.map(h => h.studentId))];
-                            myHistory = result.data.filter(item => myStudentIds.includes(item.studentId));
                         }
-                        
-                        // บันทึกทับ localStorage
-                        localStorage.setItem('msteam_reports', JSON.stringify(myHistory));
                         renderHistory(myHistory);
+                    } else {
+                        renderHistory([]);
                     }
                 } catch (error) {
                     console.error("Failed to fetch latest history:", error);
+                    renderHistory([]);
                 } finally {
                     isFetchingHistory = false;
                 }
@@ -491,9 +484,6 @@
                                         <i class="fa-solid ${iconStr}"></i>
                                         <span>${statusStr}</span>
                                     </div>
-                                    <button onclick="deleteHistory(${index})" class="text-slate-500 hover:text-red-400 bg-slate-900 hover:bg-slate-800 w-8 h-8 rounded-xl flex items-center justify-center border border-slate-700 transition-all shadow-sm" title="ลบรายการนี้">
-                                        <i class="fa-solid fa-trash-can text-xs"></i>
-                                    </button>
                                 </div>
                             </div>
                             
@@ -544,21 +534,6 @@
             container.innerHTML = html;
         }
 
-        function deleteHistory(index) {
-            if(confirm("คุณต้องการลบประวัติการแจ้งปัญหานี้ใช่หรือไม่?")) {
-                let history = JSON.parse(localStorage.getItem('msteam_reports')) || [];
-                history.splice(index, 1);
-                localStorage.setItem('msteam_reports', JSON.stringify(history));
-                loadHistory();
-            }
-        }
-
-        function clearAllHistory() {
-            if(confirm("คุณต้องการลบประวัติการแจ้งปัญหา 'ทั้งหมด' ใช่หรือไม่?")) {
-                localStorage.removeItem('msteam_reports');
-                loadHistory();
-            }
-        }
 
         function showSuccess() {
             document.getElementById('report-form').classList.add('hidden');
