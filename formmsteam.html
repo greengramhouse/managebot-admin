@@ -418,7 +418,10 @@
             iconSubmit.className = "spinner mr-2";
             textSubmit.innerText = "กำลังบันทึกข้อมูล...";
 
+            const requestId = "REQ" + new Date().getTime();
+
             const payload = {
+                requestId: requestId,
                 userId: lineUserId, // เพิ่ม userId จาก LIFF
                 studentId: studentId,
                 fullName: fullName,
@@ -444,6 +447,7 @@
                     if(result.status === 'success' || result.result === 'success') {
                         loadHistory();
                         if (result.imageUrl) payload.imageUrl = result.imageUrl;
+                        if (result.requestId) payload.requestId = result.requestId;
                         await handleSuccessState(payload);
                     } else {
                         throw new Error(result.message || "เกิดข้อผิดพลาดจากเซิร์ฟเวอร์");
@@ -578,6 +582,7 @@
                                 <div>
                                     <div class="flex items-center space-x-2 mb-2">
                                         <span class="bg-slate-900 text-slate-300 text-[11px] px-2.5 py-1 rounded-md font-mono font-bold border border-slate-700"><i class="fa-solid fa-hashtag mr-1 text-slate-500"></i>${item.studentId}</span>
+                                        ${item.requestId ? `<span class="bg-slate-900 text-pink-400 text-[11px] px-2.5 py-1 rounded-md font-mono font-bold border border-pink-500/30"><i class="fa-solid fa-ticket mr-1"></i>${item.requestId}</span>` : ''}
                                         <div class="flex items-center text-[11px] text-slate-400 font-bold bg-slate-900 px-2.5 py-1 rounded shadow-sm border border-slate-700">
                                             <i class="fa-regular fa-clock mr-1.5 text-pink-500/70"></i> ${dateStr} ${timeStr}
                                         </div>
@@ -713,6 +718,10 @@
                             { type: "separator", margin: "md" },
                             { type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: [
                                 { type: "box", layout: "baseline", spacing: "sm", contents: [
+                                    { type: "text", text: "รหัสอ้างอิง", color: "#94a3b8", size: "sm", flex: 2 },
+                                    { type: "text", text: data.requestId || "-", color: "#1e293b", size: "sm", weight: "bold", flex: 5, wrap: true }
+                                ]},
+                                { type: "box", layout: "baseline", spacing: "sm", contents: [
                                     { type: "text", text: "รหัสนักเรียน", color: "#94a3b8", size: "sm", flex: 2 },
                                     { type: "text", text: data.studentId || "-", color: "#1e293b", size: "sm", weight: "bold", flex: 5, wrap: true }
                                 ]},
@@ -728,9 +737,20 @@
                         ]
                     },
                     footer: {
-                        type: "box", layout: "vertical",
+                        type: "box", layout: "vertical", spacing: "sm",
                         contents: [
-                            { type: "text", text: "เวลาแจ้ง: " + new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center" }
+                            {
+                                type: "button",
+                                style: "primary",
+                                height: "sm",
+                                color: "#ec4899",
+                                action: {
+                                    type: "message",
+                                    label: "ตรวจสอบสถานะ",
+                                    text: "check-" + (data.requestId || "")
+                                }
+                            },
+                            { type: "text", text: "เวลาแจ้ง: " + new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center", margin: "md" }
                         ]
                     },
                     styles: {
