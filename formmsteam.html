@@ -671,39 +671,58 @@
         }
 
         function createFlexMessage(data) {
-            return {
+            const flex = {
                 type: "flex",
                 altText: "แจ้งปัญหาการใช้งาน MS Teams สำเร็จ",
                 contents: {
                     type: "bubble",
-                    size: "kilo",
+                    size: "mega",
                     header: {
                         type: "box",
-                        layout: "vertical",
-                        backgroundColor: "#ec4899", // สีชมพูให้เข้ากับธีม
+                        layout: "horizontal",
+                        alignItems: "center",
+                        backgroundColor: "#fdf2f8", // สีชมพูอ่อนๆ ตามธีม
+                        paddingAll: "20px",
                         contents: [
-                            { type: "text", text: "✅ รับแจ้งปัญหาสำเร็จ", weight: "bold", color: "#ffffff", size: "lg", align: "center" }
+                            { 
+                                type: "image", 
+                                url: "https://www.siba.ac.th/images/siba-thumb.png", 
+                                size: "sm", 
+                                flex: 0 
+                            },
+                            { 
+                                type: "text", 
+                                text: "รับแจ้งปัญหาสำเร็จ", 
+                                weight: "bold", 
+                                color: "#ec4899", 
+                                size: "lg", 
+                                margin: "md",
+                                flex: 1,
+                                wrap: true,
+                                gravity: "center"
+                            }
                         ]
                     },
                     body: {
                         type: "box",
                         layout: "vertical",
                         spacing: "md",
+                        paddingAll: "20px",
                         contents: [
                             { type: "text", text: "เราได้รับข้อมูลของคุณแล้ว แอดมินจะรีบตรวจสอบและดำเนินการให้เร็วที่สุดครับ", size: "sm", color: "#64748b", wrap: true },
                             { type: "separator", margin: "md" },
                             { type: "box", layout: "vertical", spacing: "sm", margin: "md", contents: [
                                 { type: "box", layout: "baseline", spacing: "sm", contents: [
                                     { type: "text", text: "รหัสนักเรียน", color: "#94a3b8", size: "sm", flex: 2 },
-                                    { type: "text", text: data.studentId, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                    { type: "text", text: data.studentId || "-", color: "#1e293b", size: "sm", weight: "bold", flex: 5, wrap: true }
                                 ]},
                                 { type: "box", layout: "baseline", spacing: "sm", contents: [
                                     { type: "text", text: "ชื่อ-สกุล", color: "#94a3b8", size: "sm", flex: 2 },
-                                    { type: "text", text: data.fullName, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                    { type: "text", text: data.fullName || "-", color: "#1e293b", size: "sm", weight: "bold", flex: 5, wrap: true }
                                 ]},
                                 { type: "box", layout: "baseline", spacing: "sm", contents: [
-                                    { type: "text", text: "ปัญหาที่พบ", color: "#94a3b8", size: "sm", flex: 2 },
-                                    { type: "text", text: data.details, color: "#1e293b", size: "sm", weight: "bold", flex: 4, wrap: true }
+                                    { type: "text", text: "รายละเอียด", color: "#94a3b8", size: "sm", flex: 2 },
+                                    { type: "text", text: data.details || "-", color: "#1e293b", size: "sm", weight: "bold", flex: 5, wrap: true }
                                 ]}
                             ]}
                         ]
@@ -711,11 +730,28 @@
                     footer: {
                         type: "box", layout: "vertical",
                         contents: [
-                            { type: "text", text: "เวลาแจ้ง: " + new Date(data.timestamp).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center" }
+                            { type: "text", text: "เวลาแจ้ง: " + new Date().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }), color: "#cbd5e1", size: "xs", align: "center" }
                         ]
+                    },
+                    styles: {
+                        footer: { separator: false }
                     }
                 }
             };
+
+            // ถ้ามีรูปภาพแนบมาด้วย ให้ใส่เป็น Hero Image
+            if (data.imageUrl && data.imageUrl.trim() !== '') {
+                flex.contents.hero = {
+                    type: "image",
+                    url: data.imageUrl,
+                    size: "full",
+                    aspectRatio: "20:13",
+                    aspectMode: "cover",
+                    backgroundColor: "#f8fafc"
+                };
+            }
+
+            return flex;
         }
 
         function closeSuccessModal() {
