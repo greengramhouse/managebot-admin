@@ -1124,9 +1124,101 @@
                 transform: rotate(360deg);
             }
         }
-
         .spin {
             animation: spin 0.8s linear infinite;
+        }
+
+        .accordion-row {
+            display: none !important;
+        }
+        .accordion-content {
+            background: #f8fafc;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+        .acc-item {
+            margin-bottom: 8px;
+        }
+        .acc-label {
+            font-weight: 600;
+            color: #475569;
+            margin-right: 6px;
+        }
+
+        /* ============================================
+           PAGINATION
+        ============================================ */
+        .pagination-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-top: 1px solid #e2e8f0;
+            background: #f8fafc;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .pagination-info {
+            font-size: 12.5px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .pagination-info span {
+            font-weight: 700;
+            color: #334155;
+        }
+        .pagination-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .page-btn {
+            min-width: 34px;
+            height: 34px;
+            padding: 0 8px;
+            border: 1.5px solid #e2e8f0;
+            background: #fff;
+            color: #475569;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+        .page-btn:hover:not(:disabled) {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(99,102,241,0.25);
+        }
+        .page-btn.active {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(99,102,241,0.35);
+        }
+        .page-btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .page-btn.nav-btn {
+            font-size: 12px;
+        }
+        .page-ellipsis {
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-weight: 700;
+            font-size: 13px;
         }
 
         /* ============================================
@@ -1182,6 +1274,12 @@
 
             .hide-mobile {
                 display: none !important;
+            }
+            .accordion-row.open {
+                display: table-row !important;
+            }
+            tr.main-row {
+                cursor: pointer;
             }
 
             thead th,
@@ -1335,11 +1433,16 @@
                                     <th class="hide-mobile">รายละเอียดปัญหา</th>
                                     <th>สถานะ</th>
                                     <th class="hide-mobile">วันที่แจ้ง</th>
+                                    <th class="hide-mobile">รูปภาพ</th>
                                     <th>จัดการ</th>
                                 </tr>
                             </thead>
                             <tbody id="services-table-body"></tbody>
                         </table>
+                        <div class="pagination-wrap" id="services-pagination-wrap">
+                            <div class="pagination-info" id="services-pagination-info"></div>
+                            <div class="pagination-controls" id="services-pagination-controls"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -1826,7 +1929,7 @@
                     isOnline = true;
                     document.getElementById('system-status').innerHTML = `<div class="status-dot"></div><span>Online</span>`;
 
-                    renderServices();
+                    renderServices(true);
                     renderKeywords(); renderRichMenus(); renderUsers(); renderAliases();
                     showToast('โหลดข้อมูลสำเร็จ', 'success', 2200);
                 } else {
@@ -1840,6 +1943,21 @@
             }
         }
 
+        function toggleAccordion(id, currentTr) {
+            if (window.innerWidth > 768) return;
+            const tbody = currentTr.closest('tbody');
+            const allAccRows = tbody.querySelectorAll('.accordion-row');
+            allAccRows.forEach(row => {
+                if (row.id !== id) {
+                    row.classList.remove('open');
+                }
+            });
+            const targetRow = document.getElementById(id);
+            if (targetRow) {
+                targetRow.classList.toggle('open');
+            }
+        }
+
         function getServiceBadge(status) {
             if (status === 'รับเรื่องแล้ว') return `<span class="badge b-blue"><i class="fa-solid fa-inbox"></i> รับเรื่องแล้ว</span>`;
             if (status === 'อยู่ระหว่างดำเนินการ') return `<span class="badge b-org"><i class="fa-solid fa-spinner spin"></i> กำลังดำเนินการ</span>`;
@@ -1847,12 +1965,16 @@
             return `<span class="badge b-gray">${status || '-'}</span>`;
         }
 
-        function renderServices() {
+        // ---- Pagination state for services ----
+        let servicesCurrentPage = 1;
+        const SERVICES_PER_PAGE = 10;
+
+        function renderServices(resetPage = false) {
+            if (resetPage) servicesCurrentPage = 1;
             const search = document.getElementById('search-service').value.toLowerCase();
             const tbody = document.getElementById('services-table-body');
             const dataList = appData.services || [];
 
-            // แก้ไขจุดบกพร่องเรื่อง TypeError .toLowerCase() บน Number
             const filtered = dataList.filter(s => {
                 const stId = s.studentId != null ? String(s.studentId).toLowerCase() : '';
                 const fName = s.fullName != null ? String(s.fullName).toLowerCase() : '';
@@ -1860,12 +1982,23 @@
                 return stId.includes(search) || fName.includes(search) || det.includes(search);
             });
 
+            const paginationWrap = document.getElementById('services-pagination-wrap');
+
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clipboard-check"></i></div><p>ไม่มีรายการแจ้งปัญหา</p></div></td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon"><i class="fa-solid fa-clipboard-check"></i></div><p>ไม่มีรายการแจ้งปัญหา</p></div></td></tr>`;
+                paginationWrap.style.display = 'none';
                 return;
             }
 
-            tbody.innerHTML = filtered.map(s => {
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / SERVICES_PER_PAGE);
+            if (servicesCurrentPage > totalPages) servicesCurrentPage = totalPages;
+
+            const start = (servicesCurrentPage - 1) * SERVICES_PER_PAGE;
+            const end = Math.min(start + SERVICES_PER_PAGE, totalItems);
+            const pageItems = filtered.slice(start, end);
+
+            tbody.innerHTML = pageItems.map(s => {
                 const date = new Date(s.timestamp).toLocaleDateString('th-TH', { year: '2-digit', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
                 let pushHtml = '';
@@ -1882,7 +2015,7 @@
                 }
 
                 return `
-                <tr>
+                <tr class="main-row" onclick="toggleAccordion('acc-service-${s.rowNumber}', this)">
                     <td>
                         <div style="font-weight:600;color:#1e293b;font-size:13.5px;">${s.fullName}</div>
                         <div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:2px;">${s.studentId}</div>
@@ -1893,14 +2026,80 @@
                         ${pushHtml}
                     </td>
                     <td class="hide-mobile" style="color:#64748b;font-size:12.5px;">${date !== 'Invalid Date' ? date : '-'}</td>
-                    <td>
+                    <td class="hide-mobile">
+                        ${s.imageUrl && s.imageUrl.trim() !== '' ? `<a href="${s.imageUrl}" target="_blank" class="btn-outline-indigo" style="padding:4px 8px; font-size:11px; text-decoration:none;"><i class="fa-solid fa-image"></i> รูปภาพ</a>` : '<span style="color:#cbd5e1;font-size:11px;">-</span>'}
+                    </td>
+                    <td onclick="event.stopPropagation()">
                         <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px;">
                             <button onclick="openServiceModal('${s.rowNumber}', '${s.status}')" class="action-btn action-edit" title="แก้ไขสถานะ"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="deleteService('${s.rowNumber}')" class="action-btn action-del" title="ลบ"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     </td>
+                </tr>
+                <tr id="acc-service-${s.rowNumber}" class="accordion-row">
+                    <td colspan="6" style="padding:0; border:none;">
+                        <div class="accordion-content">
+                            <div class="acc-item"><span class="acc-label">รายละเอียดปัญหา:</span><span style="word-break:break-word;">${s.details}</span></div>
+                            <div class="acc-item"><span class="acc-label">วันที่แจ้ง:</span><span>${date !== 'Invalid Date' ? date : '-'}</span></div>
+                            <div class="acc-item"><span class="acc-label">รูปภาพ:</span><span>${s.imageUrl && s.imageUrl.trim() !== '' ? `<a href="${s.imageUrl}" target="_blank" style="color:#4f46e5; text-decoration:underline;">เปิดดูรูปภาพ</a>` : '-'}</span></div>
+                        </div>
+                    </td>
                 </tr>`;
             }).join('');
+
+            // Render pagination
+            paginationWrap.style.display = totalPages <= 1 ? 'none' : 'flex';
+            renderServicesPagination(totalItems, totalPages, start, end);
+        }
+
+        function renderServicesPagination(totalItems, totalPages, start, end) {
+            const info = document.getElementById('services-pagination-info');
+            const controls = document.getElementById('services-pagination-controls');
+
+            info.innerHTML = `แสดง <span>${start + 1}–${end}</span> จาก <span>${totalItems}</span> รายการ`;
+
+            let pages = [];
+            // Always show first, last, current ±1
+            const delta = 1;
+            const range = [];
+            for (let i = Math.max(2, servicesCurrentPage - delta); i <= Math.min(totalPages - 1, servicesCurrentPage + delta); i++) {
+                range.push(i);
+            }
+            if (range[0] > 2) range.unshift('...');
+            if (range[range.length - 1] < totalPages - 1) range.push('...');
+            pages = [1, ...range, totalPages];
+            if (totalPages === 1) pages = [1];
+
+            let html = `<button class="page-btn nav-btn" onclick="goToServicesPage(${servicesCurrentPage - 1})" ${servicesCurrentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+
+            pages.forEach(p => {
+                if (p === '...') {
+                    html += `<span class="page-ellipsis">···</span>`;
+                } else {
+                    html += `<button class="page-btn ${p === servicesCurrentPage ? 'active' : ''}" onclick="goToServicesPage(${p})">${p}</button>`;
+                }
+            });
+
+            html += `<button class="page-btn nav-btn" onclick="goToServicesPage(${servicesCurrentPage + 1})" ${servicesCurrentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+
+            controls.innerHTML = html;
+        }
+
+        function goToServicesPage(page) {
+            const dataList = appData.services || [];
+            const search = document.getElementById('search-service').value.toLowerCase();
+            const filtered = dataList.filter(s => {
+                const stId = s.studentId != null ? String(s.studentId).toLowerCase() : '';
+                const fName = s.fullName != null ? String(s.fullName).toLowerCase() : '';
+                const det = s.details != null ? String(s.details).toLowerCase() : '';
+                return stId.includes(search) || fName.includes(search) || det.includes(search);
+            });
+            const totalPages = Math.ceil(filtered.length / SERVICES_PER_PAGE);
+            if (page < 1 || page > totalPages) return;
+            servicesCurrentPage = page;
+            renderServices();
+            // Scroll table into view smoothly
+            document.getElementById('services-table-body').closest('.table-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         async function pushFlexResult(userId, fullName, details, dateStr, rowNumber) {
@@ -2208,14 +2407,21 @@
                     : `<span class="badge-pill b-yell"><i class="fa-solid fa-magnifying-glass"></i>Contains</span>`;
                 const kwSafe = k.keyword.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
                 return `
-                <tr>
+                <tr class="main-row" onclick="toggleAccordion('acc-kw-${kwSafe}', this)">
                     <td style="font-weight:600;color:#1e293b;">${k.keyword}</td>
                     <td class="hide-mobile">${matchBadge}</td>
                     <td><div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${msgBadge}${loadBadge}</div></td>
-                    <td>
+                    <td onclick="event.stopPropagation()">
                         <div style="display:flex;align-items:center;justify-content:flex-end;gap:3px;">
                             <button onclick="openKeywordModal('${kwSafe}')" class="action-btn action-edit" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
                             <button onclick="deleteKeyword('${kwSafe}')" class="action-btn action-del" title="ลบ"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="acc-kw-${kwSafe}" class="accordion-row">
+                    <td colspan="4" style="padding:0; border:none;">
+                        <div class="accordion-content">
+                            <div class="acc-item"><span class="acc-label">Match Type:</span><span>${matchBadge}</span></div>
                         </div>
                     </td>
                 </tr>`;
@@ -2349,7 +2555,7 @@
                     if (match && match[1]) displayUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w500`;
                 }
                 return `
-                <tr>
+                <tr class="main-row" onclick="toggleAccordion('acc-rm-${r.richMenuId}', this)">
                     <td><div style="width:54px;height:34px;border-radius:8px;overflow:hidden;background:#f1f5f9;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:center;">
                         ${displayUrl ? `<img src="${displayUrl}" style="width:100%;height:100%;object-fit:cover;" referrerpolicy="no-referrer">` : `<i class="fa-solid fa-image" style="color:#cbd5e1;font-size:14px;"></i>`}
                     </div></td>
@@ -2357,15 +2563,23 @@
                         <div style="font-weight:600;color:#1e293b;font-size:13.5px;">${r.name || 'ไม่มีชื่อ'}</div>
                         <div style="font-size:10.5px;color:#94a3b8;font-family:monospace;margin-top:2px;display:flex;align-items:center;gap:6px;">
                             <span>${r.richMenuId.substring(0, 14)}...</span>
-                            <button onclick="copyToClipboard('${r.richMenuId}')" title="คัดลอก ID" style="background:none;border:none;color:#6366f1;cursor:pointer;padding:2px;border-radius:4px;"><i class="fa-regular fa-copy"></i></button>
+                            <button onclick="event.stopPropagation(); copyToClipboard('${r.richMenuId}')" title="คัดลอก ID" style="background:none;border:none;color:#6366f1;cursor:pointer;padding:2px;border-radius:4px;"><i class="fa-regular fa-copy"></i></button>
                         </div>
                     </td>
                     <td class="hide-mobile">${statusBadge}</td>
                     <td class="hide-mobile" style="color:#64748b;font-size:13px;">${date !== 'Invalid Date' ? date : '-'}</td>
-                    <td>
+                    <td onclick="event.stopPropagation()">
                         <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
                             ${!isDefault ? `<button onclick="setDefaultRichMenu('${r.richMenuId}','${r.name}')" class="btn-outline-indigo">Set Default</button>` : ''}
                             <button onclick="deleteRichMenu('${r.richMenuId}','${r.name}')" class="action-btn action-del"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="acc-rm-${r.richMenuId}" class="accordion-row">
+                    <td colspan="5" style="padding:0; border:none;">
+                        <div class="accordion-content">
+                            <div class="acc-item"><span class="acc-label">สถานะ:</span><span>${statusBadge}</span></div>
+                            <div class="acc-item"><span class="acc-label">วันที่สร้าง:</span><span>${date !== 'Invalid Date' ? date : '-'}</span></div>
                         </div>
                     </td>
                 </tr>`;
@@ -2401,7 +2615,7 @@
                     : `<div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#e0e7ff,#c7d2fe);display:flex;align-items:center;justify-content:center;color:#6366f1;font-size:16px;flex-shrink:0;"><i class="fa-solid fa-user"></i></div>`;
                 const date = new Date(u.date).toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
                 return `
-                <tr>
+                <tr class="main-row" onclick="toggleAccordion('acc-user-${u.userId}', this)">
                     <td>
                         <div style="display:flex;align-items:center;gap:12px;">
                             ${pic}
@@ -2413,9 +2627,17 @@
                     </td>
                     <td class="hide-mobile" style="font-size:13px;color:#64748b;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${u.status || '-'}</td>
                     <td class="hide-mobile" style="color:#64748b;font-size:13px;">${date !== 'Invalid Date' ? date : '-'}</td>
-                    <td>
+                    <td onclick="event.stopPropagation()">
                         <div style="display:flex;justify-content:flex-end;">
                             <button onclick="deleteUser('${u.userId}')" class="action-btn action-del"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+                <tr id="acc-user-${u.userId}" class="accordion-row">
+                    <td colspan="4" style="padding:0; border:none;">
+                        <div class="accordion-content">
+                            <div class="acc-item"><span class="acc-label">Status Message:</span><span style="word-break:break-word;">${u.status || '-'}</span></div>
+                            <div class="acc-item"><span class="acc-label">วันที่ติดตาม:</span><span>${date !== 'Invalid Date' ? date : '-'}</span></div>
                         </div>
                     </td>
                 </tr>`;
