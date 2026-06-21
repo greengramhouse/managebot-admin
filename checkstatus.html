@@ -1,1 +1,214 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตรวจสอบสถานะการแจ้งปัญหา</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Prompt', sans-serif; background-color: #0f172a; }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .spinner {
+            border: 3px solid rgba(236, 72, 153, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #ec4899;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease forwards; opacity: 0; }
+    </style>
+</head>
+<body class="text-slate-200 min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 selection:bg-pink-500/30 selection:text-pink-200 p-4 sm:p-8">
+
+    <!-- Background Decorations -->
+    <div class="fixed top-10 left-10 w-72 h-72 bg-blue-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none"></div>
+    <div class="fixed bottom-10 right-10 w-72 h-72 bg-pink-600 rounded-full mix-blend-screen filter blur-[100px] opacity-20 pointer-events-none"></div>
+
+    <div class="max-w-xl w-full mx-auto relative z-10">
+        
+        <!-- Header -->
+        <div class="text-center mb-8 pt-4">
+            <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-lg shadow-pink-500/30 mx-auto mb-4">
+                <i class="fa-solid fa-magnifying-glass text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-rose-400 tracking-tight leading-tight">ตรวจสอบสถานะ</h1>
+            <p class="text-sm text-slate-400 mt-2">ระบบติดตามการแจ้งปัญหา MS Teams</p>
+        </div>
+
+        <!-- Content Area -->
+        <div id="content-area" class="glass-panel rounded-3xl shadow-2xl border border-slate-700 p-6 sm:p-8 relative overflow-hidden transition-all duration-500 min-h-[300px] flex flex-col justify-center">
+            
+            <!-- Loading State -->
+            <div id="loading-state" class="flex flex-col items-center justify-center py-10">
+                <div class="spinner mb-4"></div>
+                <p class="text-slate-400 font-bold animate-pulse">กำลังค้นหาข้อมูล...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="hidden flex flex-col items-center justify-center py-8 text-center animate-fade-in-up">
+                <div class="w-20 h-20 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-4 border border-rose-500/20">
+                    <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white mb-2">ไม่พบข้อมูล</h3>
+                <p id="error-message" class="text-slate-400 text-sm">ไม่พบรหัสอ้างอิงนี้ในระบบ หรืออาจยังไม่ได้บันทึกข้อมูล</p>
+            </div>
+
+            <!-- Result State -->
+            <div id="result-state" class="hidden animate-fade-in-up">
+                <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" id="status-bar"></div>
+                
+                <div class="flex justify-between items-start mb-6 pt-2">
+                    <div>
+                        <p class="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">รหัสอ้างอิง</p>
+                        <p id="res-req-id" class="text-lg font-mono font-bold text-pink-400 bg-pink-500/10 px-3 py-1 rounded-lg inline-block border border-pink-500/20"></p>
+                    </div>
+                    <div id="res-status-badge" class="px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center space-x-1.5">
+                        <i id="res-status-icon" class="fa-solid"></i>
+                        <span id="res-status-text"></span>
+                    </div>
+                </div>
+
+                <div class="space-y-5 bg-slate-900/50 rounded-2xl p-5 border border-slate-700/50">
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <p class="text-[11px] text-slate-500 font-bold uppercase mb-1">รหัสนักเรียน</p>
+                            <p id="res-student-id" class="text-sm font-bold text-slate-200"></p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] text-slate-500 font-bold uppercase mb-1">ชื่อ-สกุล</p>
+                            <p id="res-fullname" class="text-sm font-bold text-slate-200"></p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-[11px] text-slate-500 font-bold uppercase mb-1">รายละเอียดปัญหา</p>
+                        <p id="res-details" class="text-sm text-slate-300 bg-slate-800/50 p-3 rounded-xl border border-slate-700/50"></p>
+                    </div>
+
+                    <div>
+                        <p class="text-[11px] text-slate-500 font-bold uppercase mb-1">วันที่แจ้ง</p>
+                        <div class="flex items-center text-sm text-slate-400 font-medium">
+                            <i class="fa-regular fa-calendar text-pink-500/70 mr-2"></i>
+                            <span id="res-date"></span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="text-center mt-6">
+            <button onclick="window.close()" class="text-slate-400 hover:text-white text-sm font-bold transition-colors">
+                ปิดหน้าต่างนี้
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyRoHz6qUr6E_8TnpWvrvSXwhIiZNVreB12ozmfBKzZ1-dZs_a2JqsFvSdeIaQiHiZ-EQ/exec'; 
+
+        window.onload = async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const reqId = urlParams.get('id');
+
+            const loadingState = document.getElementById('loading-state');
+            const errorState = document.getElementById('error-state');
+            const resultState = document.getElementById('result-state');
+            const errorMessage = document.getElementById('error-message');
+
+            if (!reqId) {
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                errorMessage.innerText = "ไม่พบพารามิเตอร์ 'id' โปรดเข้าผ่านลิงก์ที่ถูกต้อง";
+                return;
+            }
+
+            try {
+                // Fetch data from SCRIPT_URL
+                const response = await fetch(SCRIPT_URL);
+                const result = await response.json();
+                
+                if (result.status === 'success' && result.data) {
+                    const foundItem = result.data.find(item => item.requestId === reqId);
+                    
+                    if (foundItem) {
+                        displayResult(foundItem);
+                        loadingState.classList.add('hidden');
+                        resultState.classList.remove('hidden');
+                    } else {
+                        loadingState.classList.add('hidden');
+                        errorState.classList.remove('hidden');
+                        errorMessage.innerText = `ไม่พบข้อมูลสำหรับรหัสอ้างอิง: ${reqId}`;
+                    }
+                } else {
+                    throw new Error("Invalid response format");
+                }
+            } catch (error) {
+                console.error("Fetch Error:", error);
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                errorMessage.innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล กรุณาลองใหม่อีกครั้ง";
+            }
+        };
+
+        function displayResult(item) {
+            document.getElementById('res-req-id').innerText = item.requestId || "-";
+            document.getElementById('res-student-id').innerText = item.studentId || "-";
+            document.getElementById('res-fullname').innerText = item.fullName || "-";
+            document.getElementById('res-details').innerText = item.details || "-";
+            
+            const dateObj = new Date(item.timestamp);
+            const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = dateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute:'2-digit' });
+            document.getElementById('res-date').innerText = `${dateStr} เวลา ${timeStr} น.`;
+
+            const statusStr = item.status || "รับเรื่องแล้ว";
+            document.getElementById('res-status-text').innerText = statusStr;
+
+            const badge = document.getElementById('res-status-badge');
+            const icon = document.getElementById('res-status-icon');
+            const statusBar = document.getElementById('status-bar');
+
+            // Reset classes
+            badge.className = "px-3 py-1.5 rounded-full text-xs font-bold border shadow-sm flex items-center space-x-1.5";
+            icon.className = "fa-solid";
+            
+            if (statusStr.includes("รับเรื่อง") || statusStr.includes("รอดำเนินการ")) {
+                badge.classList.add("text-amber-400", "bg-amber-400/10", "border-amber-400/20");
+                icon.classList.add("fa-hourglass-half");
+                statusBar.className = "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-500 to-orange-500";
+            } else if (statusStr.includes("เสร็จ") || statusStr.includes("เรียบร้อย")) {
+                badge.classList.add("text-emerald-400", "bg-emerald-400/10", "border-emerald-400/20");
+                icon.classList.add("fa-check-circle");
+                statusBar.className = "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-teal-500";
+            } else if (statusStr.includes("อยู่ระหว่างดำเนินการ") || statusStr.includes("ระหว่าง") || statusStr.includes("กำลัง")) {
+                badge.classList.add("text-blue-400", "bg-blue-400/10", "border-blue-400/20");
+                icon.classList.add("fa-spinner", "fa-spin");
+                statusBar.className = "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-cyan-500";
+            } else if (statusStr.includes("ปฏิเสธ") || statusStr.includes("ยกเลิก") || statusStr.includes("ไม่ได้")) {
+                badge.classList.add("text-rose-400", "bg-rose-400/10", "border-rose-400/20");
+                icon.classList.add("fa-times-circle");
+                statusBar.className = "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-500 to-pink-500";
+            } else {
+                badge.classList.add("text-purple-400", "bg-purple-400/10", "border-purple-400/20");
+                icon.classList.add("fa-info-circle");
+                statusBar.className = "absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-pink-500";
+            }
+        }
+    </script>
+</body>
+</html>
 
